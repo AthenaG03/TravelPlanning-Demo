@@ -1,0 +1,17 @@
+{
+  "name": "川西环线之旅 · 旅行线路管理",
+  "short_name": "川西环线",
+  "description": "川西环线自驾行程规划：路线、景点、必吃榜、住宿一键管理",
+  "start_url": "./chuanxi_travel_amap_mvp_v2.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f7fb",
+  "theme_color": "#2f7df6",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

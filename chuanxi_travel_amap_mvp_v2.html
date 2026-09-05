@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#2f7df6" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="川西环线" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>川西环线之旅 · 旅行线路管理 MVP</title>
+<style>
+  * { box-sizing: border-box; }
+  :root{
+    --blue:#2f7df6; --blue2:#5aa3ff; --ink:#182230; --muted:#738096;
+    --line:#e8edf4; --bg:#f5f7fb; --card:#fff; --green:#18b77e;
+  }
+  body{margin:0;font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
+  button{font:inherit}
+  .app{height:100vh;display:flex;flex-direction:column}
+  header{
+    height:76px;background:#fff;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:20
+  }
+  .brand{display:flex;gap:16px;align-items:center}
+  .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#36c7a0,#55a5ff);display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px}
+  .title{font-size:20px;font-weight:750;letter-spacing:.2px;cursor:pointer;border-radius:6px;padding:1px 6px;margin-left:-6px;transition:background .15s}
+  .title:hover{background:#eef4ff}
+  .title.editing{background:#fff;outline:2px dashed #2f7df6;cursor:text}
+  .sub #subDates{cursor:pointer;border-radius:4px;padding:0 3px;transition:background .15s}
+  .sub #subDates:hover{background:#eef4ff}
+  .sub #subDates.editing{background:#fff;outline:2px dashed #2f7df6;cursor:text}
+  .sub{font-size:12px;color:var(--muted);margin-top:5px}
+  .actions{display:flex;gap:10px}
+  .btn{height:40px;padding:0 16px;border:1px solid #dfe6ef;border-radius:9px;background:#fff;color:#253142;cursor:pointer}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .main{display:flex;flex:1;min-height:0}
+  .sidebar{
+    width:410px;background:#f8fafc;border-right:1px solid var(--line);padding:18px 16px;overflow:auto;z-index:12
+  }
+  .section{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:14px;box-shadow:0 4px 16px rgba(31,50,81,.03)}
+  .section-head{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 10px}
+  .section-title{font-size:17px;font-weight:750}
+  .link{color:var(--blue);font-size:13px;cursor:pointer}
+  .route-list{padding:0 10px 10px}
+  .route-item{
+    display:flex;align-items:center;gap:12px;padding:13px 10px;border:1px solid #edf1f6;
+    border-radius:10px;margin:8px 0;background:#fff;cursor:pointer;transition:.15s
+  }
+  .route-item:hover,.route-item.active{border-color:#cfe0ff;background:#f6faff}
+  .num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#2f7df6;color:#fff;font-weight:700;font-size:13px;flex:0 0 auto}
+  .num.green{background:var(--green)}
+  .route-name{font-weight:650;flex:1}
+  .day{font-size:12px;color:#687587}
+  .drag{color:#9aa6b6}
+  .route-item{position:relative}
+  .edit-ops{display:flex;align-items:center;gap:4px;margin-left:auto}
+  .mini{width:24px;height:24px;border:1px solid #dce4ee;border-radius:6px;background:#fff;color:#526071;font-size:11px;cursor:pointer;display:grid;place-items:center;line-height:1;padding:0}
+  .mini:hover{background:#f0f6ff;border-color:#bcd6ff;color:var(--blue)}
+  .mini.del:hover{background:#fff1f0;border-color:#ffc9c5;color:#e5484d}
+  .drag-handle{width:20px;height:26px;display:grid;place-items:center;color:#9aa6b6;font-size:16px;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;flex:0 0 auto}
+  .drag-handle:active{cursor:grabbing}
+  .route-item.dragging{opacity:.94;box-shadow:0 12px 28px rgba(35,55,80,.2);z-index:6;position:relative}
+  .add-wp{margin:4px 12px 14px;height:40px;border-radius:9px;background:#fff;color:var(--blue);border:1px dashed #bcd6ff;width:calc(100% - 24px);cursor:pointer}
+  .add-wp:hover{background:#f0f6ff}
+  .wp-tip{font-size:11px;color:var(--muted);line-height:1.6}
+  /* ===== 榜单（高德扫街榜 / 必吃榜风格）===== */
+  .rankbox{padding:6px 12px 14px}
+  .rank-head{display:flex;align-items:center;gap:8px;padding:12px 4px 8px}
+  .rank-title{font-size:15px;font-weight:780}
+  .rank-badge{font-size:10px;color:#fff;background:linear-gradient(135deg,#ff9f43,#ff6b35);padding:3px 8px;border-radius:20px;font-weight:700;letter-spacing:.5px}
+  .rank-src{font-size:10px;color:var(--muted);margin:0 4px 6px;line-height:1.5}
+  .rank-item{display:flex;gap:10px;padding:11px 6px;border-bottom:1px solid #f0f4f9;align-items:flex-start}
+  .rank-item:last-child{border-bottom:0}
+  .rank-no{width:26px;height:26px;border-radius:8px;flex:0 0 auto;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;background:#c3cedd}
+  .rank-no.r1{background:linear-gradient(135deg,#ffb020,#ff8a00)}
+  .rank-no.r2{background:linear-gradient(135deg,#b8c2d0,#8b99aa)}
+  .rank-no.r3{background:linear-gradient(135deg,#e0a37a,#c97b4a)}
+  .rank-main{flex:1;min-width:0}
+  .rank-name{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .rank-tag{font-size:10px;color:var(--blue);background:#eef4ff;border-radius:4px;padding:1px 6px;font-weight:600}
+  .rank-tag.hot{color:#ff6b35;background:#fff2ec}
+  .rank-desc{font-size:11.5px;color:#687587;margin-top:3px;line-height:1.55}
+  .rank-empty{padding:18px;text-align:center;color:#8a96a7;font-size:13px}
+  .day-head{display:flex;justify-content:space-between;align-items:center;padding:17px 16px 10px}
+  .day-title{font-size:18px;font-weight:780}
+  .day-date{font-size:12px;color:var(--muted)}
+  .tabs{display:flex;gap:7px;padding:0 12px;border-bottom:1px solid var(--line)}
+  .tab{padding:10px 9px;color:#687587;font-size:13px;cursor:pointer;border-bottom:2px solid transparent}
+  .tab.active{color:var(--blue);border-color:var(--blue);font-weight:650}
+  .timeline{padding:7px 12px 12px}
+  .item{display:flex;gap:10px;padding:13px 6px;border-bottom:1px solid #eef2f7;cursor:pointer}
+  .item:last-child{border-bottom:0}
+  .ico{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:16px;flex:0 0 auto}
+  .ico.drive{background:#e7f0ff}.ico.food{background:#fff0dd}.ico.spot{background:#e8f6e9}.ico.hotel{background:#efe7ff}
+  .itxt{flex:1}.itime{font-weight:700;font-size:14px}.iname{font-size:13px;margin-top:4px}.idesc{font-size:11px;color:var(--muted);margin-top:3px}
+  .chev{color:#9aa6b6}
+  .add{margin:0 12px 14px;height:40px;border-radius:9px;background:var(--blue);color:#fff;border:0;width:calc(100% - 24px);cursor:pointer}
+  .mapwrap{position:relative;flex:1;overflow:hidden;background:
+    radial-gradient(circle at 20% 25%,rgba(111,159,119,.10),transparent 27%),
+    radial-gradient(circle at 75% 65%,rgba(106,145,118,.08),transparent 30%),
+    linear-gradient(180deg,#eef4f0,#e8f0e9);
+  }
+  .map{
+    position:absolute;inset:0;
+    background-image:
+      linear-gradient(18deg,transparent 48.8%,rgba(170,188,176,.3) 49%,transparent 49.2%),
+      linear-gradient(100deg,transparent 49%,rgba(180,196,183,.22) 49.15%,transparent 49.3%),
+      repeating-linear-gradient(25deg,transparent 0 58px,rgba(160,181,166,.08) 59px 61px),
+      repeating-linear-gradient(108deg,transparent 0 74px,rgba(160,181,166,.07) 75px 77px);
+    filter:saturate(.85);
+  }
+  .river{position:absolute;left:0;right:0;top:8%;height:2px;background:rgba(83,165,224,.25);transform:rotate(-7deg);box-shadow:0 120px rgba(83,165,224,.13),0 250px rgba(83,165,224,.12)}
+  .road{position:absolute;inset:0}
+  svg{position:absolute;inset:0;width:100%;height:100%}
+  .route-shadow{fill:none;stroke:#fff;stroke-width:11;stroke-linejoin:round;stroke-linecap:round;opacity:.9}
+  .route-line{fill:none;stroke:#2f7df6;stroke-width:6;stroke-linejoin:round;stroke-linecap:round}
+  .travel-card{
+    position:absolute;left:24px;top:24px;background:rgba(255,255,255,.97);padding:14px 17px;border-radius:11px;
+    box-shadow:0 8px 24px rgba(41,60,80,.12);min-width:235px;z-index:5
+  }
+  .stat{display:flex;gap:10px;align-items:center;font-size:14px;margin:5px 0}
+  .map-tools{position:absolute;right:18px;top:24px;display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 8px 20px rgba(38,51,68,.11);overflow:hidden;z-index:5}
+  .tool{width:44px;height:44px;border:0;border-bottom:1px solid #edf1f5;background:#fff;cursor:pointer;font-size:21px}
+  .tool:last-child{border-bottom:0}
+  .marker{position:absolute;transform:translate(-50%,-50%);z-index:8;cursor:pointer}
+  .bubble{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800;border:4px solid rgba(255,255,255,.95);box-shadow:0 5px 14px rgba(35,55,80,.22)}
+  .marker.done .bubble{background:var(--green)} .marker.future .bubble,.marker.current .bubble{background:var(--blue)}
+  .label{position:absolute;left:24px;top:-3px;white-space:nowrap;background:#fff;padding:6px 9px;border-radius:7px;box-shadow:0 4px 12px rgba(44,60,79,.08);font-size:13px;font-weight:700}
+  .popup{
+    position:absolute;left:58%;top:58%;width:190px;background:#fff;border-radius:11px;box-shadow:0 11px 30px rgba(33,52,76,.16);padding:14px;z-index:9
+  }
+  .popup h3{margin:0;font-size:15px}.popup .blue{color:var(--blue);float:right;font-size:12px}.popup p{margin:10px 0 5px;font-size:12px;color:#6c7888}.popup .primary{width:100%;height:34px}
+  .legend{position:absolute;right:18px;bottom:18px;background:rgba(255,255,255,.96);border-radius:10px;padding:12px 14px;box-shadow:0 8px 20px rgba(38,51,68,.1);font-size:11px;z-index:5}
+  .lg{display:flex;align-items:center;gap:8px;margin:4px 0}.dot{width:10px;height:10px;border-radius:50%}.green{background:var(--green)}.blue{background:var(--blue)}.pale{background:#a9cffd}
+  .zoom-label{position:absolute;right:72px;bottom:18px;background:rgba(255,255,255,.96);border-radius:10px;padding:8px 11px;color:#6c7888;font-size:11px}
+  .modal-mask{display:none;position:fixed;inset:0;background:rgba(22,34,48,.4);z-index:50;align-items:center;justify-content:center}
+  .modal{width:420px;background:#fff;border-radius:14px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.22)}
+  .modal h3{margin:0 0 15px}.form{display:grid;gap:10px}.form input,.form select{height:40px;border:1px solid #dce4ee;border-radius:8px;padding:0 11px}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  @media(max-width:900px){
+    .sidebar{width:350px}.title{font-size:17px}
+  }
+  @media(max-width:720px){
+    header{height:66px;padding:0 12px;gap:8px}
+    .brand{gap:10px;min-width:0}
+    .logo{width:36px;height:36px;font-size:15px;border-radius:10px}
+    .title{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw}
+    .sub{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw}
+    .actions{gap:6px;flex-shrink:0}
+    .btn{height:36px;padding:0 10px;font-size:12px}
+    .btn.primary{display:none}
+    .sidebar{position:absolute;left:0;bottom:0;width:100%;height:46%;border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+    .mapwrap{height:100%}.section.route-section{display:none}
+    .travel-card{left:12px;top:12px;min-width:210px}.popup{display:none}
+    .modal{width:calc(100vw - 32px)}
+    .legend{bottom:calc(18px + env(safe-area-inset-bottom))}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">川</div>
+      <div>
+        <div class="title" id="appTitle" title="点击编辑标题">川西环线之旅 ✎</div>
+        <div class="sub"><span id="subDays">6天5晚</span> · <span id="subDates" title="点击编辑日期">2024年6月10日 → 6月15日</span></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="shareBtn" title="复制行程摘要">⌯ 分享</button>
+      <button class="btn" id="exportBtn" title="下载行程 HTML 文件">⇩ 导出行程</button>
+      <button class="btn primary" id="addPlace">＋ 添加地点</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <aside class="sidebar">
+      <section class="section route-section">
+        <div class="section-head"><div class="section-title">行程路线</div><div class="link" id="editRoute">✎ 编辑路线</div></div>
+        <div class="route-list" id="routeList"></div>
+        <button class="add-wp" id="addWp" style="display:none">＋ 添加途经点</button>
+      </section>
+
+      <section class="section">
+        <div class="day-head">
+          <div class="day-title" id="dayTitle">Day 2 · 康定</div>
+          <div class="day-date" id="dayDate">6月11日　›</div>
+        </div>
+        <div class="tabs">
+          <div class="tab active" data-filter="all">全部</div>
+          <div class="tab" data-filter="交通">交通</div>
+          <div class="tab" data-filter="景点">景点</div>
+          <div class="tab" data-filter="餐饮">餐饮</div>
+          <div class="tab" data-filter="住宿">住宿</div>
+        </div>
+        <div class="timeline" id="timeline"></div>
+        <div id="rankBox"></div>
+        <button class="add" id="addItem">＋ 添加事项</button>
+      </section>
+    </aside>
+
+    <section class="mapwrap">
+      <div class="map" id="map"><div id="amapContainer" style="position:absolute;inset:0;z-index:1;"></div>
+        <div class="river" style="display:none"></div>
+        <div class="travel-card">
+          <div class="stat">🚗 <b>总里程：</b>约 1316 km</div>
+          <div class="stat">◷ <b>总时间：</b>约 23h 45m</div>
+        </div>
+
+        <svg id="simRoute" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true" style="display:none">
+          <polyline class="route-shadow" points="850,350 640,420 485,290 575,165 350,510 850,350"></polyline>
+          <polyline class="route-line" points="850,350 640,420 485,290 575,165 350,510 850,350"></polyline>
+        </svg>
+
+        <div class="marker done" style="display:none" data-city="成都" style="left:85%;top:44%">
+          <div class="bubble">1</div><div class="label">成都</div>
+        </div>
+        <div class="marker current" style="display:none" data-city="康定" style="left:64%;top:52%">
+          <div class="bubble">2</div><div class="label">康定</div>
+        </div>
+        <div class="marker future" style="display:none" data-city="理塘" style="left:48.5%;top:36%">
+          <div class="bubble">3</div><div class="label">理塘</div>
+        </div>
+        <div class="marker future" style="display:none" data-city="香格里拉镇" style="left:57.5%;top:20.7%">
+          <div class="bubble">4</div><div class="label">香格里拉镇</div>
+        </div>
+        <div class="marker future" style="display:none" data-city="新都桥" style="left:35%;top:64%">
+          <div class="bubble">5</div><div class="label">新都桥</div>
+        </div>
+        <div class="marker future" style="display:none" data-city="成都" style="left:85%;top:44%;opacity:.7;transform:translate(-50%,-50%) translate(0,0)">
+          <div class="bubble" style="display:none">1</div>
+        </div>
+
+        <div class="popup" id="popup">
+          <h3 id="popupCity">康定 <span class="blue">Day 2</span></h3>
+          <p>⌁ 海拔：2560 m</p>
+          <p>▣ 预计停留：1天</p>
+          <button class="btn primary" style="width:100%;height:34px" id="viewDetail">查看详情</button>
+        </div>
+
+        <div class="map-tools">
+          <button class="tool" id="zoomIn">＋</button>
+          <button class="tool" id="zoomOut">−</button>
+          <button class="tool" id="reset">◎</button>
+          <button class="tool">▱</button>
+        </div>
+
+        <div class="legend">
+          <div class="lg"><span class="dot green"></span> 出发 / 结束</div>
+          <div class="lg"><span class="dot blue"></span> 途经点</div>
+          <div class="lg"><span class="dot pale"></span> 未到达</div>
+        </div>
+        <div class="zoom-label">高德地图 · JS API 2.0</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-mask" id="wpMask">
+  <div class="modal">
+    <h3>添加途经点</h3>
+    <div class="form">
+      <input id="wpName" list="wpPresets" placeholder="城市 / 地名，如：丹巴" />
+      <datalist id="wpPresets"></datalist>
+      <div style="display:flex;gap:10px">
+        <input id="wpLng" placeholder="经度，如 101.89" style="flex:1" />
+        <input id="wpLat" placeholder="纬度，如 30.88" style="flex:1" />
+      </div>
+      <div class="wp-tip">选择上方常用地点会自动填入参考坐标；也可手动输入。坐标为行政区/景区近似值，请自行核对精度后再保存。</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelWp">取消</button>
+      <button class="btn primary" id="saveWp">添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3 id="modalTitle">添加事项</h3>
+    <div class="form">
+      <input id="fTime" placeholder="时间，例如 19:00" />
+      <input id="fName" placeholder="事项名称，例如：入住康定酒店" />
+      <select id="fType">
+        <option value="交通">交通</option>
+        <option value="景点">景点</option>
+        <option value="餐饮">餐饮</option>
+        <option value="住宿">住宿</option>
+      </select>
+      <input id="fDesc" placeholder="补充说明（可选）" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelModal">取消</button>
+      <button class="btn primary" id="saveItem">保存</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // ===== 高德地图配置 =====
+  // 当前为开发测试版。正式部署时建议把安全密钥放在后端。
+  window._AMapSecurityConfig = {
+    securityJsCode: "7d883e4b4c8bbfca471eab928ec485a4"
+  };
+</script>
+
+<script src="https://webapi.amap.com/loader.js"></script>
+
+<script>
+(async function () {
+  const note = (text) => {
+    const el = document.createElement("div");
+    el.style.cssText =
+      "position:absolute;left:50%;top:18px;transform:translateX(-50%);" +
+      "z-index:50;background:#fff;padding:10px 14px;border-radius:9px;" +
+      "box-shadow:0 6px 20px rgba(0,0,0,.12);font-size:12px;color:#526071;" +
+      "max-width:520px;text-align:center;";
+    el.textContent = text;
+    document.querySelector(".mapwrap").appendChild(el);
+    setTimeout(() => el.remove(), 8000);
+  };
+
+  try {
+    const AMap = await AMapLoader.load({
+      key: "6376906e6c474d29195e33493c947572",
+      version: "2.0",
+      plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.Driving"]
+    });
+
+    const map = new AMap.Map("amapContainer", {
+      zoom: 7,
+      center: [102.5, 29.6],
+      viewMode: "2D"
+    });
+
+    map.addControl(new AMap.Scale());
+    map.addControl(new AMap.ToolBar({ position: "RB" }));
+
+    // 城市数据统一从侧边栏读取（含坐标），保证编辑后地图同步
+    const cities = (window.__routeCities || [
+      {name:"成都（出发地）", pos:[104.0665,30.5728], day:"Day 1"},
+      {name:"康定", pos:[101.9638,30.0500], day:"Day 2"},
+      {name:"理塘", pos:[100.2698,29.9960], day:"Day 3"},
+      {name:"香格里拉镇", pos:[100.5920,28.6960], day:"Day 4"},
+      {name:"新都桥", pos:[101.5900,30.0400], day:"Day 5"},
+      {name:"成都（返回）", pos:[104.0665,30.5728], day:"Day 6"}
+    ]);
+    const shortName = (n) => n.replace('（出发地）','').replace('（返回）','');
+
+    const markers = [];
+    function buildMarkers() {
+      markers.forEach(m => m.setMap(null));
+      markers.length = 0;
+      cities.forEach((c, i) => {
+        if (!c.pos) return;
+        const isEnd = i === 0 || i === cities.length - 1;
+        const marker = new AMap.Marker({
+          position: c.pos,
+          title: shortName(c.name),
+          content:
+            `<div style="width:38px;height:38px;border-radius:50%;` +
+            `background:${isEnd ? '#18b77e' : '#2f7df6'};color:#fff;` +
+            `border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.22);` +
+            `display:grid;place-items:center;font-weight:800;font-size:14px;">${i === cities.length-1 ? 1 : i+1}</div>`,
+          anchor: "center"
+        });
+
+        marker.on("click", () => {
+          if (typeof selectCity === "function") selectCity(c.name);
+          map.setZoomAndCenter(10, c.pos);
+        });
+
+        marker.setMap(map);
+        markers.push(marker);
+      });
+    }
+
+    // ===== 兜底路线：无驾车权限时用平滑曲线串联各站点（Catmull-Rom 样条）=====
+    function catmullRom(pts, per) {
+      const out = [];
+      const P = [pts[0], ...pts, pts[pts.length - 1]];
+      for (let i = 1; i < P.length - 2; i++) {
+        const p0 = P[i - 1], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2];
+        for (let s = 0; s < per; s++) {
+          const t = s / per, t2 = t * t, t3 = t2 * t;
+          out.push([
+            0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+            0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
+          ]);
+        }
+      }
+      out.push(pts[pts.length - 1]);
+      return out;
+    }
+
+    function drawFallbackRoute() {
+      try {
+        if (window.__realRouteLine) { window.__realRouteLine.setMap(null); window.__realRouteLine = null; }
+        if (window.__fallbackLine) { window.__fallbackLine.setMap(null); window.__fallbackLine = null; }
+        const pts = cities.filter(c => c.pos).map(c => c.pos);
+        if (pts.length < 2) return;
+        const smooth = catmullRom(pts, 24);
+        window.__fallbackLine = new AMap.Polyline({
+          path: smooth,
+          strokeColor: "#2f7df6",
+          strokeWeight: 6,
+          strokeOpacity: 0.9,
+          strokeStyle: "dashed",
+          lineJoin: "round",
+          lineCap: "round",
+          showDir: true
+        });
+        window.__fallbackLine.setMap(map);
+        map.setFitView([...markers, window.__fallbackLine]);
+        note("真实驾车路线规划失败，已退回平滑连线（示意路线）。");
+      } catch (e) {
+        console.error("drawFallbackRoute failed:", e);
+      }
+    }
+
+    // ===== 真实驾车路线（Web 服务 Key + REST 接口，逐段规划拼接闭环）=====
+    // Web 服务 Key 无需安全密钥（靠 IP 白名单鉴权）；闭环需拆成相邻段分别请求
+    const WEB_KEY = "5d59b9c56167decdd7fc9e630fb4aed9";
+
+    function clearRouteLines() {
+      if (window.__realRouteLine) { window.__realRouteLine.setMap(null); window.__realRouteLine = null; }
+      if (window.__fallbackLine) { window.__fallbackLine.setMap(null); window.__fallbackLine = null; }
+    }
+
+    async function planRealRoute() {
+      const pts = cities.filter(c => c.pos);
+      if (pts.length < 2) return false;
+      const fetchSeg = (o, d, retry = 1) =>
+        fetch(`https://restapi.amap.com/v3/direction/driving?origin=${o}&destination=${d}&key=${WEB_KEY}&extensions=all`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.status !== '1' || !data.route || !data.route.paths || !data.route.paths[0]) {
+              if (retry > 0) return fetchSeg(o, d, retry - 1);
+              return null;
+            }
+            const coords = [];
+            data.route.paths[0].steps.forEach(s => {
+              s.polyline.split(';').forEach(p => {
+                const [lng, lat] = p.split(',');
+                coords.push([parseFloat(lng), parseFloat(lat)]);
+              });
+            });
+            return coords;
+          })
+          .catch(() => (retry > 0 ? fetchSeg(o, d, retry - 1) : null));
+      const segs = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const o = pts[i].pos.join(',');
+        const d = pts[i + 1].pos.join(',');
+        segs.push(fetchSeg(o, d));
+      }
+      const results = await Promise.all(segs);
+      if (results.some(r => !r || !r.length)) return false;
+      const all = [];
+      results.forEach((coords, i) => {
+        all.push(...(i === 0 ? coords : coords.slice(1))); // 去掉段间重复点
+      });
+      if (all.length < 2) return false;
+
+      clearRouteLines();
+      window.__realRouteLine = new AMap.Polyline({
+        path: all,
+        strokeColor: '#2f7df6',
+        strokeWeight: 6,
+        strokeOpacity: 1,
+        strokeStyle: 'solid',
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
+      window.__realRouteLine.setMap(map);
+      map.setFitView([...markers, window.__realRouteLine]);
+      note("已用 Web 服务 Key 绘制真实驾车路线。");
+      return true;
+    }
+
+    async function planRoute() {
+      clearRouteLines();
+      const ok = await planRealRoute();
+      if (!ok) drawFallbackRoute();
+    }
+
+    buildMarkers();
+    planRoute();
+
+    // 暴露给侧边栏编辑：城市顺序/点位变化后整体重绘
+    window.__redrawMap = () => { buildMarkers(); planRoute(); };
+
+    window.__amap = map;
+    window.__amapCities = cities;
+  } catch (err) {
+    console.error("AMap initialization failed:", err);
+    note("高德地图加载失败：" + (err?.message || err));
+  }
+})();
+</script>
+
+<script>
+// ===== 行程路线数据（唯一数据源；高德地图通过 window.__routeCities 读取）=====
+const cities = [
+  {name:'成都（出发地）', pos:[104.0665,30.5728], day:'Day 1', id:'chengdu1'},
+  {name:'康定', pos:[101.9638,30.0500], day:'Day 2', id:'kangding'},
+  {name:'理塘', pos:[100.2698,29.9960], day:'Day 3', id:'litang'},
+  {name:'香格里拉镇', pos:[100.5920,28.6960], day:'Day 4', id:'shangri'},
+  {name:'新都桥', pos:[101.5900,30.0400], day:'Day 5', id:'xinduqiao'},
+  {name:'成都（返回）', pos:[104.0665,30.5728], day:'Day 6', id:'chengdu2'}
+];
+window.__routeCities = cities;
+
+let currentCity = '康定';
+let items = {
+  '康定': [
+    {time:'08:00',name:'从成都出发',type:'交通',desc:'预计行驶 5h20m · 314km'},
+    {time:'13:20',name:'午餐',type:'餐饮',desc:'康定藏式牦牛肉汤锅'},
+    {time:'14:30',name:'木格措景区',type:'景点',desc:'游玩时间：3小时'},
+    {time:'19:00',name:'入住酒店',type:'住宿',desc:'康定情歌酒店'}
+  ],
+  '成都（出发地）': [{time:'08:00',name:'集合出发',type:'交通',desc:'成都市区出发'}],
+  '理塘': [{time:'09:00',name:'前往理塘',type:'交通',desc:'预计 4h30m · 267km'}],
+  '香格里拉镇': [{time:'10:00',name:'亚丁景区',type:'景点',desc:'安排全天游览'}],
+  '新都桥': [{time:'09:00',name:'摄影打卡',type:'景点',desc:'新都桥晨雾与光影'}],
+  '成都（返回）': [{time:'18:00',name:'返程抵达',type:'交通',desc:'回到成都'}]
+};
+
+function note(text){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99;background:#fff;padding:10px 14px;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,.12);font-size:12px;color:#e5484d;border:1px solid #ffd7d3;max-width:520px;text-align:center;';
+  el.textContent=text;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),4000);
+}
+
+function icon(type){ return type==='交通'?'🚗':type==='景点'?'🏔':type==='餐饮'?'🍜':'🏨'; }
+function cls(type){ return type==='交通'?'drive':type==='景点'?'spot':type==='餐饮'?'food':'hotel'; }
+
+// ===== 编辑模式 =====
+let editing = false;
+const editBtn = document.getElementById('editRoute');
+editBtn.onclick = () => {
+  editing = !editing;
+  editBtn.textContent = editing ? '✓ 完成' : '✎ 编辑路线';
+  document.getElementById('addWp').style.display = editing ? 'block' : 'none';
+  renderRoute();
+};
+
+function renumberDays(){
+  const n = cities.length;
+  cities.forEach((c,i)=>{
+    c.day = i===0 ? 'Day 1' : (i===n-1 ? 'Day '+n : 'Day '+(i+1));
+  });
+  const days=document.getElementById('subDays');
+  if(days) days.textContent = `${n}天${n-1}晚`;
+}
+
+function isEnd(i){ return i===0 || i===cities.length-1; }
+
+function renderRoute(){
+  document.getElementById('routeList').innerHTML = cities.map((c,i)=>{
+    const num = i===0 ? 1 : (i===cities.length-1 ? 1 : i+1);
+    const ops = editing
+      ? (isEnd(i)
+          ? `<span class="drag-handle" title="起点/终点固定，不可调整" style="cursor:not-allowed">≡</span>`
+          : `<div class="edit-ops">
+              <button class="mini" data-act="up" title="上移">▲</button>
+              <button class="mini" data-act="down" title="下移">▼</button>
+              <button class="mini del" data-act="del" title="删除">✕</button>
+              <span class="drag-handle" title="按住拖动排序">≡</span>
+            </div>`)
+      : `<div class="drag">≡</div>`;
+    return `
+    <div class="route-item ${c.name.includes(currentCity) ? 'active':''}" data-city="${c.name}" data-idx="${i}">
+      <div class="num ${isEnd(i)?'green':''}">${num}</div>
+      <div class="route-name">${c.name}</div><div class="day">${c.day}</div>
+      ${ops}
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.route-item').forEach(el=>{
+    el.onclick=(e)=>{
+      if(e.target.closest('.mini')||e.target.closest('.drag-handle')) return;
+      selectCity(el.dataset.city);
+    };
+  });
+  document.querySelectorAll('.mini').forEach(btn=>{
+    btn.onclick=(e)=>{
+      e.stopPropagation();
+      const idx=+btn.closest('.route-item').dataset.idx;
+      const act=btn.dataset.act;
+      if(act==='up') moveCity(idx, idx-1);
+      else if(act==='down') moveCity(idx, idx+1);
+      else if(act==='del') delCity(idx);
+    };
+  });
+}
+
+function moveCity(from,to){
+  if(to<1 || to>cities.length-2 || from<1 || from>cities.length-2 || from===to) return;
+  const [it]=cities.splice(from,1);
+  cities.splice(to,0,it);
+  renumberDays(); renderRoute();
+  if(window.__redrawMap) window.__redrawMap();
+}
+
+function delCity(idx){
+  if(idx<1 || idx>cities.length-2) return;
+  const removed=cities[idx].name;
+  cities.splice(idx,1);
+  if(currentCity===removed) currentCity = cities[0].name;
+  renumberDays(); renderRoute(); renderTimeline();
+  if(window.__redrawMap) window.__redrawMap();
+}
+
+// ===== 拖拽排序（按住 ≡ 上下拖动）=====
+const routeListEl=document.getElementById('routeList');
+let drag=null, justDragged=false;
+routeListEl.addEventListener('pointerdown',(e)=>{
+  if(!editing) return;
+  const handle=e.target.closest('.drag-handle');
+  if(!handle) return;
+  const item=handle.closest('.route-item');
+  const idx=+item.dataset.idx;
+  if(idx<1 || idx>cities.length-2) return;
+  e.preventDefault();
+  drag={ idx, item, startY:e.clientY, h:item.offsetHeight+16, to:idx };
+  item.classList.add('dragging');
+  try{ item.setPointerCapture(e.pointerId); }catch(_){}
+});
+routeListEl.addEventListener('pointermove',(e)=>{
+  if(!drag) return;
+  const dy=e.clientY-drag.startY;
+  if(Math.abs(dy)>3) justDragged=true;
+  const to=Math.max(1,Math.min(cities.length-2, drag.idx+Math.round(dy/drag.h)));
+  drag.to=to;
+  drag.item.style.transform=`translateY(${dy}px)`;
+});
+function endDrag(){
+  if(!drag) return;
+  const {idx,to,item}=drag;
+  drag=null;
+  item.classList.remove('dragging');
+  item.style.transform='';
+  if(to!==idx) moveCity(idx,to);
+  setTimeout(()=>{ justDragged=false; },300);
+}
+routeListEl.addEventListener('pointerup',endDrag);
+routeListEl.addEventListener('pointercancel',endDrag);
+
+// ===== 榜单推荐数据（整理自携程口碑 / 大众点评系点评 / 游客攻略等公开信息）=====
+const RANKS = {
+  '成都': {
+    '景点': [
+      {name:'宽窄巷子', tag:'免费', desc:'老成都底片与新都市会客厅，井巷子、窄巷子逛吃拍照，成都必打卡地标。'},
+      {name:'成都大熊猫繁育研究基地', tag:'经典', desc:'近距离看滚滚啃竹子、爬树打架，建议一早前往避开人流与高温。'},
+      {name:'武侯祠 · 锦里', tag:'三国文化', desc:'三国圣地武侯祠紧邻锦里古街，红墙竹影+夜景灯笼，历史与市井一站式。'},
+      {name:'杜甫草堂', tag:'诗圣故居', desc:'杜甫流寓成都时的故居，园林清幽，红墙黛瓦间感受"茅屋为秋风所破歌"的意境。'},
+      {name:'都江堰 · 青城山', tag:'世界遗产', desc:'千年水利工程都江堰+道教仙山青城山，一日可往返，成都周边最经典一日游。'}
+    ],
+    '餐饮': [
+      {name:'吼堂老火锅', tag:'热门榜NO.1', hot:true, desc:'2020–2025年累计霸榜大众点评成都火锅热门榜NO.1超1300天，沉浸式老成都场景+鲜货直供。'},
+      {name:'蜀九香老火锅', tag:'九宫格标杆', hot:true, desc:'成都九宫格火锅标杆，专利无渣牛油锅底香气厚重，千层肚、黄喉品质稳定。'},
+      {name:'皇城老妈', tag:'老字号', desc:'成都老牌火锅，文化火锅定位+进汤锅底，本地人请客常选，人均约170。'},
+      {name:'月满大江千层肚火锅', tag:'必吃榜', desc:'千层肚赛道头部、中国火锅TOP100，大王千层肚有世界纪录认证，非遗红锅+牦牛骨汤。'},
+      {name:'谭鸭血火锅', tag:'卤味火锅', desc:'开创火锅+卤味鲜盒锅底，自带卤味配料，鸭血滑嫩，连锁出品稳定。'}
+    ],
+    '住宿': [
+      {name:'太古里IFS国金中心亚朵X酒店', tag:'位置拉满', hot:true, desc:'步行即达太古里与IFS，早餐丰富、卫生细节到位，闹中取静，评分约4.7。'},
+      {name:'夜泊君亭酒店（春熙路太古里店）', tag:'蜀锦美学', desc:'黄金区位，步行可达IFS爬墙熊猫与太古里，蜀锦美学客房+全景落地窗。'},
+      {name:'C-loft·套房酒店（春熙路太古里店）', tag:'复式Loft', desc:'高空复式loft套房，私密性好、拍照出片，连住多天好评，评分约4.7。'},
+      {name:'凯特丽亚创意主题酒店公寓（春熙太古里店）', tag:'公寓式', desc:'楼下即春熙路与太古里，配洗衣机、厨具与胶囊咖啡机，管家服务贴心，评分4.9。'},
+      {name:'朵兰达LAB酒店（春熙路步行街店）', tag:'宠物友好', desc:'就在春熙路里，离IFS熊猫打卡点近，隔音好、可带宠物，评分约4.6。'}
+    ]
+  },
+  '康定': {
+    '景点': [
+      {name:'木格措', tag:'康定情歌海子', hot:true, desc:'康定情歌里的高山湖泊，七色海、杜鹃峡、药池沸泉，一日游核心景区。'},
+      {name:'折多山垭口', tag:'318第一垭口', hot:true, desc:'川藏线第一个高海拔垭口（4298米），晴天可观贡嘎群峰，经幡与云海是经典机位。'},
+      {name:'塔公草原', tag:'雅拉雪山', desc:'"菩萨喜欢的地方"，草甸与雅拉雪山深情对望，7–8月可体验赛马。'},
+      {name:'鱼子西', tag:'天空之城', desc:'贡嘎与雅拉同框的观景平台，雪山日落与星空出片率极高，需越野/底盘高车辆。'},
+      {name:'红海子', tag:'小众海子', desc:'小众高山海子，背靠笔架山雪峰，湖面如镜，冬季可见冰封奇景，自驾约30分钟。'}
+    ],
+    '餐饮': [
+      {name:'蜀九记·鲜切牦牛肉菌汤锅', tag:'本地人常去', hot:true, desc:'鲜切牦牛肉+菌汤锅，牛肉紧实带奶香、膻味轻，落地康定第一顿的本地推荐。'},
+      {name:'云雪里·鲜切牦牛肉鲜菌火锅', tag:'6年老店', hot:true, desc:'开了六年的明档鲜切店，牦牛骨+十二种高原野生菌慢熬八小时，汤色奶白。'},
+      {name:'阿西土陶牦牛汤锅', tag:'携程5分', desc:'318国道梵音阿缦艺术酒店内，土陶锅煮牦牛肉与野生菌，游客反馈一致好评。'},
+      {name:'马记煨汤馆', tag:'人均亲民', desc:'大块牦牛肉煨汤配手工面，暖身舒缓高反，人均约17元，性价比之选。'},
+      {name:'胖娃鲜货烧烤', tag:'特色烧烤', desc:'康定特色烧烤，高原食材新鲜，夜晚烟火气足，适合逛完溜溜城加餐。'}
+    ],
+    '住宿': [
+      {name:'观山阅城民宿（康定溜溜城店）', tag:'窗外好景', hot:true, desc:'地势高、窗外雪山城景俱佳，老板对雪山线路了如指掌，评分4.8。'},
+      {name:'藏云阁民宿（情歌广场溜溜城店）', tag:'近广场', desc:'距康定情歌广场约170米，房间设施新、服务热情，评分4.7。'},
+      {name:'康定珠玑别院view度假院子', tag:'俯瞰康定城', desc:'建在溜溜城和情歌广场正上方，窗外即跑马山，现代简约风格度假体验。'},
+      {name:'拾壹号·莫奈的花园·度假观景民宿', tag:'花园民宿', desc:'318国道旁花园环绕，房间宽敞有特色，步行至情歌广场约几百米，评分4.6。'},
+      {name:'事外栖岚民宿（情歌广场溜溜城店）', tag:'江河景房', desc:'性价比高，江景河景房视野好，距溜溜城约1公里，评分4.6。'}
+    ]
+  },
+  '理塘': {
+    '景点': [
+      {name:'勒通古镇 · 千户藏寨', tag:'免费 · 4A', hot:true, desc:'全球最大传统藏寨群落，4000余栋藏房依山而建，仁康古街、仓央嘉措微型博物馆在此。'},
+      {name:'长青春科尔寺', tag:'康区最大寺庙', hot:true, desc:'康巴藏区最古老、规模最大的格鲁派寺庙，有三百余年历史，红白黄三色建筑震撼。'},
+      {name:'毛垭大草原', tag:'丁真放牛地', desc:'一望无际的高原草甸，夏季可看黑帐篷、喝现挤牦牛奶，雪山环绕治愈感拉满。'},
+      {name:'格聂神山', tag:'雪山秘境', desc:'藏在理塘深处的金字塔形主峰，徒步党圣地，日照金山尤为壮观。'},
+      {name:'格聂之眼', tag:'大地之眼', desc:'神山脚下的心形湖泊，航拍如大地睁开的眼睛，是格聂徒步线经典打卡点。'}
+    ],
+    '餐饮': [
+      {name:'传说理塘文化主题餐吧', tag:'谢霆锋同款', hot:true, desc:'丁真家乡网红藏餐厅，手抓牛肉、酥油茶、炸酸奶必点，人均约82元。'},
+      {name:'阿佳拉藏餐馆', tag:'本地人常吃', desc:'必点牦牛肉盖被、手抓牦牛肉、甜酥油茶，人均约60元，新手可先试甜茶。'},
+      {name:'味天下餐厅', tag:'G318沿线', desc:'位于318国道云鼎商务酒店旁，藏餐川菜皆有，国外游客评分5.0。'},
+      {name:'城东幸福藏餐馆', tag:'家常藏餐', desc:'理塘本地家常藏餐，手抓牦牛肉、酥油茶分量足，价格实惠。'},
+      {name:'高城鹏飞牦牛肉汤锅', tag:'官方美食特辑', desc:'本地现宰牦牛肉直供，鲜切牛肉、牛杂、牛筋一牛多吃，汤汁醇厚鲜而无膻。'}
+    ],
+    '住宿': [
+      {name:'理塘Wind等风来·轻奢供氧度假美宿', tag:'勒通古镇内', hot:true, desc:'就在勒通古镇里，地暖、制氧设备、戴森吹风机，评分4.8，逛古镇超方便。'},
+      {name:'理塘云端悟居藏式禅意民宿', tag:'仁康古街', desc:'出门即仁康古街，藏式禅意装修，有加湿器和吸氧，评分4.8。'},
+      {name:'理塘羊卓雍康大酒店', tag:'高反友好', desc:'房间供氧稳定，缓解半夜憋醒，地暖热水充足，318自驾好评集中。'},
+      {name:'云锦酒店（G318东城门店）', tag:'供氧+藏装', desc:'供氧能力强，可免费试穿藏装拍写真，提供制氧机借用与氧气袋充气。'},
+      {name:'理塘虫草大酒店', tag:'全房供氧', desc:'全房型中央弥散供氧可将房内海拔降至2600米以下，配充电桩与吸氧中心。'}
+    ]
+  },
+  '香格里拉镇': {
+    '景点': [
+      {name:'牛奶海', tag:'长线终点', hot:true, desc:'海拔约4600米，蒂芙尼蓝冰川湖，长线徒步的灵魂奖赏，往返约10公里。'},
+      {name:'五色海', tag:'最高圣湖', hot:true, desc:'海拔4700米，湖面随光线呈青蓝绿紫棕五色，与羊卓雍措齐名的色彩圣湖。'},
+      {name:'珍珠海 · 卓玛拉措', tag:'短线精华', desc:'从冲古寺徒步约2公里即达，拍仙乃日雪山倒影绝佳，体力有限者的首选。'},
+      {name:'洛绒牛场', tag:'央迈勇正面', desc:'长线起点，央迈勇雪山正面全景+成群岩羊与藏马鸡，电瓶车可达。'},
+      {name:'冲古寺 · 冲古草甸', tag:'电影取景地', desc:'《从你的全世界路过》取景地，草甸、寺庙与三怙主神山同框。'}
+    ],
+    '餐饮': [
+      {name:'仙鱼石缘·蒸汽草帽鱼·石锅鸡', tag:'本地老店', hot:true, desc:'游客反复刷的店，蒸汽草帽鱼鲜嫩、石锅鸡暖身，多人一致好评。'},
+      {name:'亚丁蒙自源米线·砂锅菜', tag:'24年老店', desc:'开了24年的米线老店，傣味酸汤米线酸辣上头，徒步后一碗回魂。'},
+      {name:'桑吉林新派藏餐·汤锅·川菜', tag:'藏餐汤锅', desc:'藏餐、汤锅、川菜一次满足，牦牛肉汤锅鲜香，适合朋友聚餐。'},
+      {name:'第三极藏式餐酒吧', tag:'夜生活', desc:'融合烤肉+民谣与藏舞表演，稻城亚丁夜生活氛围感首选。'},
+      {name:'阿刁藏式新茶饮', tag:'高原茶饮', desc:'藏式特色茶饮，扎西德勒、雪域青稞等以牦牛鲜奶打底，逛累了来一杯。'}
+    ],
+    '住宿': [
+      {name:'日松贡布酒店（稻城亚丁店）', tag:'豪华型', hot:true, desc:'香格里拉镇豪华标杆，俄初河路16号，设施完善，近景区配套。'},
+      {name:'华美达安可酒店（稻城亚丁店）', tag:'四星 · 近游客中心', hot:true, desc:'278间客房，2017年重装，门口巴士约10分钟到游客中心，餐饮停车便利。'},
+      {name:'图腾精品客栈', tag:'藏式性价比', desc:'榻榻米软床、木地板藏式装修，价格合适性价比高，适合背包客。'},
+      {name:'藏缘酒店（香格里拉镇稻城亚丁景区店）', tag:'藏式风格', desc:'藏式装修拍照好看，老板娘热情服务超好，房间干净整齐，评分4.7。'},
+      {name:'ACE假期酒店', tag:'途牛常配', desc:'团队游常选酒店，位置在香格里拉镇，适合第二天一早进景区。'}
+    ]
+  },
+  '新都桥': {
+    '景点': [
+      {name:'新都桥镇', tag:'摄影天堂', hot:true, desc:'"光与影的世界"，金秋杨树林、青稞田与藏寨构成绝美画卷，清晨黄昏最出片。'},
+      {name:'贡嘎雪山观景台', tag:'日照金山', hot:true, desc:'新都桥周边多个观景台可见贡嘎主峰，日落时日照金山是川西经典画面。'},
+      {name:'塔公草原', tag:'亚拉雪山', desc:'亚拉雪山最佳观赏点，金顶木雅大寺与草原同框，可骑马与藏服旅拍。'},
+      {name:'木雅圣地', tag:'贡嘎北坡', desc:'贡嘎北坡观景花海，可远眺贡嘎群峰，夏秋草原花海与雪山相映。'},
+      {name:'居里寺', tag:'藏传寺庙', desc:'木雅居里寺，藏式寺庙与田园风光结合，游客相对少、更清净。'}
+    ],
+    '餐饮': [
+      {name:'杂七杂八牛杂汤锅', tag:'评分5.0', hot:true, desc:'新都桥口碑牛杂汤锅，高原牛杂+菌汤，Trip用户评分满分。'},
+      {name:'尚品牛味汤锅火锅（康定总店）', tag:'评分5.0', desc:'牛味汤锅火锅，318沿线歇脚暖身好选择，评分满分。'},
+      {name:'藏佳宴', tag:'藏餐', desc:'藏式餐饮，评分4.9，适合体验糌粑、酥油茶等地道藏味。'},
+      {name:'玛拉亚藏餐厅', tag:'藏餐', desc:'藏餐口碑店，评分4.5，环境有藏式特色。'},
+      {name:'农家菜', tag:'家常', desc:'评分4.9，川味家常菜，高原上吃一顿热乎家常饭。'}
+    ],
+    '住宿': [
+      {name:'绿石河谷私汤野奢民宿', tag:'私汤野奢', hot:true, desc:'新都桥镇拔桑二村，私汤+野奢设计，栖野餐厅，轻奢度假体验。'},
+      {name:'康定黑青稞庄园（新都桥店）', tag:'观景庄园', desc:'瓦泽乡营官村，房间院落可赏高山草地，格桑花满园，早晚餐口碑好。'},
+      {name:'秋牧晓筑民宿', tag:'特色庭院', desc:'达热上路267号，房间特色装修+花园，窗外风景美，设施含骑马徒步。'},
+      {name:'野自在民宿', tag:'16亩大院', desc:'海拔3400米，16亩大院子，硬件对标安吉民宿，服务好、安静。'},
+      {name:'然岗岭精品别院', tag:'藏式风情', desc:'318道边村庄里，藏式风情浓郁，老板热情，带小孩可免费升级，评分4.8。'}
+    ]
+  }
+};
+const PRESETS=[
+  ['丹巴',101.89,30.88],['色达',100.33,32.27],['稻城',100.30,29.04],['马尔康',102.21,31.90],
+  ['四姑娘山',102.90,31.10],['海螺沟',102.08,29.60],['泸定',102.23,29.91],['雅江',101.01,30.03],
+  ['九龙',101.51,29.00],['木里',101.28,27.93],['甘孜',99.99,31.62],['白玉',98.82,31.21],
+  ['德格',98.58,31.81],['道孚',101.12,30.98],['炉霍',100.68,31.39],['新龙',100.31,30.94],
+  ['巴塘',99.11,30.00],['乡城',99.80,28.93],['得荣',99.29,28.71],['塔公草原',101.52,30.34],
+  ['甲居藏寨',101.89,30.95],['墨石公园',101.35,30.53]
+];
+const wpMask=document.getElementById('wpMask');
+const wpName=document.getElementById('wpName');
+const wpLng=document.getElementById('wpLng');
+const wpLat=document.getElementById('wpLat');
+const wpPresets=document.getElementById('wpPresets');
+PRESETS.forEach(p=>{ const o=document.createElement('option'); o.value=p[0]; wpPresets.appendChild(o); });
+wpName.addEventListener('input',()=>{
+  const hit=PRESETS.find(p=>p[0]===wpName.value.trim());
+  if(hit){ wpLng.value=hit[1]; wpLat.value=hit[2]; }
+});
+document.getElementById('addWp').onclick=()=>{ wpMask.style.display='flex'; wpName.focus(); };
+document.getElementById('cancelWp').onclick=()=>wpMask.style.display='none';
+wpMask.onclick=e=>{ if(e.target===wpMask) wpMask.style.display='none'; };
+document.getElementById('saveWp').onclick=()=>{
+  const name=wpName.value.trim();
+  const lng=parseFloat(wpLng.value);
+  const lat=parseFloat(wpLat.value);
+  if(!name){ note('请填写地点名称'); return; }
+  if(!isFinite(lng)||!isFinite(lat)){ note('请填写有效的经纬度（从上方选择地点可自动填入参考坐标）'); return; }
+  if(cities.some(c=>c.name===name)){ note('该地点已在路线中'); return; }
+  cities.splice(cities.length-1,0,{name, pos:[lng,lat], day:'', id:'wp'+Date.now()});
+  renumberDays(); renderRoute(); renderTimeline();
+  if(window.__redrawMap) window.__redrawMap();
+  wpMask.style.display='none';
+  wpName.value=''; wpLng.value=''; wpLat.value='';
+};
+
+function activeFilter(){
+  const t=document.querySelector('.tab.active');
+  return t ? t.dataset.filter : 'all';
+}
+// ===== 榜单双通道：高德 POI 实时 API（主） + 本地口碑兜底 =====
+// 城市 → 高德 city 参数；不在此表内的城市自动用坐标周边搜索（around），保证任何攻略可复用
+const AMAP_CITY_CFG = {'成都':'成都','康定':'康定','理塘':'理塘','香格里拉镇':'稻城'};
+const RANK_KW = {'景点':['景点','景区'],'餐饮':['美食','餐厅','饭店'],'住宿':['酒店','民宿']};
+const RANK_TYPE = {'景点':'110000','餐饮':'050000','住宿':'100000'};
+const rankCache = {};
+let rankReqId = 0;
+async function fetchAmapRank(core, filter){
+  const key = "5d59b9c56167decdd7fc9e630fb4aed9";
+  const types = RANK_TYPE[filter] || '';
+  const kws = RANK_KW[filter] || [];
+  const cacheKey = core + '|' + filter;
+  if(rankCache[cacheKey]) return rankCache[cacheKey];
+  // 城市级：place/text + city 参数
+  const city = AMAP_CITY_CFG[core];
+  if(city){
+    for(const kw of kws){
+      try{
+        const u = `https://restapi.amap.com/v3/place/text?key=${key}&keywords=${encodeURIComponent(kw)}&city=${encodeURIComponent(city)}&citylimit=true&types=${types}&offset=20&page=1&extensions=all`;
+        const r = await fetch(u); const j = await r.json();
+        if(j.status==='1' && j.pois && j.pois.length){
+          const list = normAmapPois(j.pois, core, filter, kw);
+          if(list.length){ rankCache[cacheKey]=list; return list; }
+        }
+      }catch(e){}
+    }
+  }
+  // 镇级/未收录城市：place/around 坐标周边搜索（用行程里的坐标，任何攻略都可用）
+  const pt = (window.__routeCities||[]).find(c=>c.name.replace('（出发地）','').replace('（返回）','')===core);
+  if(pt && pt.pos){
+    const loc = pt.pos[0] + ',' + pt.pos[1];
+    for(const kw of kws){
+      try{
+        const u = `https://restapi.amap.com/v3/place/around?key=${key}&location=${loc}&keywords=${encodeURIComponent(kw)}&types=${types}&radius=30000&offset=20&page=1&extensions=all`;
+        const r = await fetch(u); const j = await r.json();
+        if(j.status==='1' && j.pois && j.pois.length){
+          const list = normAmapPois(j.pois, core, filter, kw);
+          if(list.length){ rankCache[cacheKey]=list; return list; }
+        }
+      }catch(e){}
+    }
+  }
+  rankCache[cacheKey] = null; return null;
+}
+function normAmapPois(pois, core, filter, kw){
+  const scored = pois.map(p=>({
+    name: p.name || '',
+    rating: parseFloat(p.biz_ext && p.biz_ext.rating) || 0,
+    cost: p.biz_ext && p.biz_ext.cost ? parseFloat(p.biz_ext.cost) : 0,
+    addr: p.address || '',
+    cityname: p.cityname || ''
+  })).filter(p=>p.name && p.name!==core);
+  // 过滤明显是其他城市的结果（text 模式下 city 未识别时会全国返回）
+  if(filter!=='住宿'){ /* 景点/餐饮无 cityname 强约束，保留 */ }
+  scored.sort((a,b)=>b.rating-a.rating);
+  return scored.slice(0,5).map((p,i)=>({
+    name: p.name,
+    tag: filter==='餐饮' ? (p.cost ? '人均¥' + (Math.round(p.cost)) : '评分' + (p.rating||'--')) : (p.rating ? '评分' + p.rating : (kw==='景点'?'热门':'')),
+    desc: (p.addr || (filter==='景点' ? '高德热门推荐' : '')) || '评分 ' + (p.rating||'--'),
+    hot: i<2 && p.rating>=4.5
+  }));
+}
+function rankSrcNote(src){
+  return src==='amap'
+    ? '📡 高德实时口碑（非官方榜单）：由高德 POI 接口按评分实时排序生成，评分/人均随商家数据更新。'
+    : '⚠ 网络口碑整理榜（非官方榜单）：条目整理自携程口碑、大众点评系点评及游客攻略等公开信息，排名与描述仅供参考。';
+}
+function renderTimeline(filter){
+  filter = filter || activeFilter();
+  const all = items[currentCity] || [];
+  const shown = filter==='all' ? all : all.filter(x=>x.type===filter);
+  document.getElementById('timeline').innerHTML = shown.map((x,idx)=>`
+    <div class="item">
+      <div class="ico ${cls(x.type)}">${icon(x.type)}</div>
+      <div class="itxt"><div class="itime">${x.time}　<span style="font-weight:600">${x.name}</span></div><div class="idesc">${x.desc||''}</div></div>
+      <div class="chev">›</div>
+    </div>`).join('') || '<div style="padding:20px;text-align:center;color:#8a96a7;font-size:13px">还没有安排事项</div>';
+  renderRank(filter);
+}
+function drawRank(box, core, filter, list, src){
+  const titles={'景点':'景点榜','餐饮':'必吃榜','住宿':'住宿榜'};
+  const icons={'景点':'🏔','餐饮':'🍲','住宿':'🏨'};
+  const noCls=['r1','r2','r3','',''];
+  box.innerHTML=`
+    <div class="rank-head">
+      <span class="rank-title">${icons[filter]} ${core}·${titles[filter]}</span>
+      <span class="rank-badge">TOP ${list.length}</span>
+    </div>
+    <div class="rank-src">${rankSrcNote(src)}</div>
+    ${list.map((r,i)=>`
+      <div class="rank-item">
+        <div class="rank-no ${noCls[i]||''}">${i+1}</div>
+        <div class="rank-main">
+          <div class="rank-name">${r.name} <span class="rank-tag ${r.hot?'hot':''}">${r.tag}</span></div>
+          <div class="rank-desc">${r.desc}</div>
+        </div>
+      </div>`).join('')}`;
+}
+function renderRank(filter){
+  const box=document.getElementById('rankBox');
+  if(!box) return;
+  if(filter!=='景点'&&filter!=='餐饮'&&filter!=='住宿'){ box.innerHTML=''; return; }
+  const core=currentCity.replace('（出发地）','').replace('（返回）','');
+  // 1) 先用本地口碑兜底立刻渲染（秒开，无网络也可用）
+  const local=(RANKS[core]||{})[filter];
+  if(local && local.length) drawRank(box, core, filter, local, 'local');
+  // 2) 异步请求高德实时 POI，成功后覆盖为 API 榜单
+  const myId = ++rankReqId;
+  fetchAmapRank(core, filter).then(list=>{
+    if(myId!==rankReqId) return;              // 已切走，丢弃过期响应
+    if(list && list.length) drawRank(box, core, filter, list, 'amap');
+    else if(!local || !local.length) box.innerHTML='<div class="rank-empty">暂无该城市榜单数据</div>';
+  }).catch(()=>{ if(myId===rankReqId && (!local || !local.length)) box.innerHTML='<div class="rank-empty">榜单加载失败</div>'; });
+}
+
+function parseStartDate(){
+  const t=(document.getElementById('subDates')?.textContent||'');
+  const m=t.match(/(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日/);
+  if(!m) return null;
+  const y=m[1]?+m[1]:new Date().getFullYear();
+  return new Date(y, +m[2]-1, +m[3]);
+}
+function fmtDate(d){ return (d.getMonth()+1)+'月'+d.getDate()+'日'; }
+function updateDayDate(dayLabel){
+  const dd=document.getElementById('dayDate');
+  if(!dd) return;
+  const start=parseStartDate();
+  const m=(dayLabel||'').match(/Day\s*(\d+)/i);
+  if(!start || !m){ dd.textContent='　›'; return; }
+  const d=new Date(start); d.setDate(d.getDate()+(+m[1]-1));
+  dd.textContent=fmtDate(d)+'　›';
+}
+function selectCity(name){
+  currentCity=name;
+  const core=name.replace('（出发地）','').replace('（返回）','');
+  const found=cities.find(x=>x.name===name);
+  const dayLabel=found ? `${found.day || ''} · ${core}` : core;
+  document.getElementById('dayTitle').textContent = dayLabel;
+  updateDayDate(found?.day);
+  document.getElementById('popupCity').innerHTML = `${core} <span class="blue">${found?.day || ''}</span>`;
+  renderRoute(); renderTimeline();
+  document.querySelectorAll('.marker').forEach(m=>m.style.filter = m.dataset.city===core ? 'drop-shadow(0 0 8px rgba(47,125,246,.45))' : '');
+}
+
+document.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active'); renderTimeline(tab.dataset.filter);
+});
+document.querySelectorAll('.marker').forEach(m=>m.onclick=()=>selectCity(m.dataset.city));
+document.getElementById('viewDetail').onclick=()=>window.scrollTo(0,0);
+
+const mask=document.getElementById('modalMask');
+function openModal(title='添加事项'){
+  document.getElementById('modalTitle').textContent=title;
+  mask.style.display='flex'; document.getElementById('fTime').focus();
+}
+document.getElementById('addItem').onclick=()=>openModal();
+document.getElementById('addPlace').onclick=()=>openModal('添加地点 / 城市');
+document.getElementById('cancelModal').onclick=()=>mask.style.display='none';
+mask.onclick=e=>{if(e.target===mask)mask.style.display='none'};
+document.getElementById('saveItem').onclick=()=>{
+  const time=document.getElementById('fTime').value.trim()||'20:00';
+  const name=document.getElementById('fName').value.trim()||'新的行程事项';
+  const type=document.getElementById('fType').value;
+  const desc=document.getElementById('fDesc').value.trim();
+  (items[currentCity] ||= []).push({time,name,type,desc});
+  mask.style.display='none'; renderTimeline();
+  document.getElementById('fTime').value='';document.getElementById('fName').value='';document.getElementById('fDesc').value='';
+};
+
+let scale=1;
+const mapEl=document.getElementById('map');
+function applyZoom(){ mapEl.style.transform=`scale(${scale})`; mapEl.style.transformOrigin='center center'; }
+document.getElementById('zoomIn').onclick=()=>{scale=Math.min(1.3,scale+.08);applyZoom()};
+document.getElementById('zoomOut').onclick=()=>{scale=Math.max(.85,scale-.08);applyZoom()};
+document.getElementById('reset').onclick=()=>{scale=1;applyZoom()};
+
+renumberDays();
+selectCity('康定');
+
+// ===== 标题可编辑（点击进入编辑，失焦/回车保存，localStorage 持久化）=====
+(function(){
+  const el=document.getElementById('appTitle');
+  const KEY='chuanxi_trip_title';
+  let base='川西环线之旅';
+  let saved=null;
+  try{ saved=localStorage.getItem(KEY); }catch(e){}
+  if(saved){ base=saved; el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP'; }
+  const commit=()=>{
+    let v=(el.textContent||'').replace(/✎/g,'').trim();
+    if(!v) v=base;
+    base=v;
+    try{ localStorage.setItem(KEY, v); }catch(e){}
+    el.classList.remove('editing'); el.setAttribute('contenteditable','false');
+    el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP';
+  };
+  el.addEventListener('click',()=>{
+    if(el.getAttribute('contenteditable')==='true') return;
+    el.classList.add('editing'); el.setAttribute('contenteditable','true');
+    el.textContent=base; el.focus();
+    const r=document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+  el.addEventListener('blur',commit);
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } if(e.key==='Escape'){ el.textContent=base+' ✎'; el.setAttribute('contenteditable','false'); el.classList.remove('editing'); } });
+})();
+
+// ===== 日期可编辑（点击日期进入编辑，失焦/回车保存，localStorage 持久化）=====
+(function(){
+  const el=document.getElementById('subDates');
+  const KEY='chuanxi_trip_dates';
+  let base='2024年6月10日 → 6月15日';
+  let saved=null;
+  try{ saved=localStorage.getItem(KEY); }catch(e){}
+  if(saved){ base=saved; el.textContent=base; }
+  updateDayDate(document.querySelector('#dayTitle')?.textContent);
+  const commit=()=>{
+    let v=(el.textContent||'').replace(/\s*→\s*/g,' → ').replace(/\s+/g,' ').trim();
+    if(!v) v=base;
+    base=v;
+    try{ localStorage.setItem(KEY, v); }catch(e){}
+    el.classList.remove('editing'); el.setAttribute('contenteditable','false');
+    el.textContent=base;
+    updateDayDate(document.querySelector('#dayTitle')?.textContent);
+  };
+  el.addEventListener('click',()=>{
+    if(el.getAttribute('contenteditable')==='true') return;
+    el.classList.add('editing'); el.setAttribute('contenteditable','true');
+    el.textContent=base; el.focus();
+    const r=document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+  el.addEventListener('blur',commit);
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } if(e.key==='Escape'){ el.textContent=base; el.setAttribute('contenteditable','false'); el.classList.remove('editing'); } });
+})();
+
+// ===== 分享：复制行程摘要到剪贴板 =====
+document.getElementById('shareBtn').onclick=()=>{
+  try{
+    const title=(document.getElementById('appTitle').textContent||'').replace(' ✎','').trim();
+    const sub=(document.getElementById('subDays')?.textContent||'')+' · '+(document.getElementById('subDates')?.textContent||'');
+    const route=window.__routeCities.map(c=>c.name.replace('（出发地）','').replace('（返回）','')).join(' → ');
+    const lines=[`【${title}】`,sub,'','📍 行程路线：'+route,''];
+    window.__routeCities.forEach(c=>{
+      const core=c.name.replace('（出发地）','').replace('（返回）','');
+      const it=items[c.name]||[];
+      lines.push(`◆ ${c.day||''} ${core}`);
+      if(!it.length){ lines.push('　（暂无安排）'); }
+      it.forEach(x=>{ lines.push(`　${x.time} ${x.name}${x.desc?' · '+x.desc:''}`); });
+      lines.push('');
+    });
+    const text=lines.join('\n');
+    const copy=()=>{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast('行程摘要已复制到剪贴板 ✓'); }
+      catch(e){ toast('复制失败，请手动选择文本'); }
+      ta.remove();
+    };
+    // 移动端优先调起系统分享面板（可直发微信/朋友圈等）
+    if(navigator.share && window.innerWidth<820){
+      navigator.share({
+        title: title.replace(' ✎',''),
+        text: text.slice(0,900)
+      }).catch(err=>{
+        if(err && err.name!=='AbortError') copy(); // 用户取消则不打扰
+      });
+      return;
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>toast('行程摘要已复制到剪贴板 ✓')).catch(copy);
+    } else copy();
+  }catch(e){ toast('分享失败：'+e.message); }
+};
+
+// ===== 导出行程：下载当前页面完整 HTML（含全部数据，可独立打开）=====
+document.getElementById('exportBtn').onclick=()=>{
+  try{
+    const title=(document.getElementById('appTitle').textContent||'').replace(' ✎','').trim();
+    const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=title+'.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+    toast('已导出 '+title+'.html ✓');
+  }catch(e){ toast('导出失败：'+e.message); }
+};
+
+// ===== 轻量 toast 提示 =====
+let _toastEl=null;
+function toast(msg){
+  if(!_toastEl){
+    _toastEl=document.createElement('div');
+    _toastEl.style.cssText='position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(20,28,42,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;transition:opacity .25s;max-width:82vw';
+    document.body.appendChild(_toastEl);
+  }
+  _toastEl.textContent=msg;
+  _toastEl.style.opacity='1';
+  clearTimeout(_toastEl._t);
+  _toastEl._t=setTimeout(()=>{ _toastEl.style.opacity='0'; },2400);
+}
+
+// ===== PWA：注册 Service Worker（仅 https 生效；file:// 本地打开自动跳过，不影响使用）=====
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then(()=>{
+      // 不打扰用户，静默注册
+    }).catch(()=>{ /* 静默失败，网页本身仍可用 */ });
+  });
+}
+</script>
+
+<script>
+(function patchZoomButtons(){
+  const oldIn = document.getElementById("zoomIn");
+  const oldOut = document.getElementById("zoomOut");
+  const oldReset = document.getElementById("reset");
+
+  oldIn.onclick = () => {
+    if (window.__amap) window.__amap.setZoom(window.__amap.getZoom() + 1);
+  };
+  oldOut.onclick = () => {
+    if (window.__amap) window.__amap.setZoom(window.__amap.getZoom() - 1);
+  };
+  oldReset.onclick = () => {
+    if (window.__amap) window.__amap.setFitView();
+  };
+})();
+</script>
+
+</body>
+</html>
