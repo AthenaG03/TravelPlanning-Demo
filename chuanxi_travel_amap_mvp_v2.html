@@ -44,6 +44,10 @@
   .section-title{font-size:17px;font-weight:750}
   .link{color:var(--blue);font-size:13px;cursor:pointer}
   .route-list{padding:0 10px 10px}
+  .empty-trip{padding:40px 20px;text-align:center;color:#94a3b8}
+  .empty-trip .empty-icon{font-size:48px;margin-bottom:12px}
+  .empty-trip .empty-title{font-size:16px;font-weight:700;color:#475569;margin-bottom:6px}
+  .empty-trip .empty-desc{font-size:13px;line-height:1.6}
   .route-item{
     display:flex;align-items:center;gap:12px;padding:13px 10px;border:1px solid #edf1f6;
     border-radius:10px;margin:8px 0;background:#fff;cursor:pointer;transition:.15s
@@ -607,7 +611,8 @@
 
 <script>
 // ===== 行程路线数据（唯一数据源；高德地图通过 window.__routeCities 读取）=====
-const cities = [
+const isNewTrip = new URLSearchParams(location.search).get('new') === '1';
+const cities = isNewTrip ? [] : [
   {name:'成都（出发地）', pos:[104.0665,30.5728], day:'Day 1', id:'chengdu1'},
   {name:'康定', pos:[101.9638,30.0500], day:'Day 2', id:'kangding'},
   {name:'理塘', pos:[100.2698,29.9960], day:'Day 3', id:'litang'},
@@ -739,6 +744,11 @@ editBtn.onclick = () => {
 
 function renumberDays(){
   const n = cities.length;
+  if(n === 0){
+    const days=document.getElementById('subDays');
+    if(days) days.textContent = '待规划';
+    return;
+  }
   cities.forEach((c,i)=>{
     c.day = i===0 ? 'Day 1' : (i===n-1 ? 'Day '+n : 'Day '+(i+1));
   });
@@ -749,6 +759,23 @@ function renumberDays(){
 function isEnd(i){ return i===0 || i===cities.length-1; }
 
 function renderRoute(){
+  // 空状态引导
+  if(cities.length === 0){
+    document.getElementById('routeList').innerHTML = `
+      <div class="empty-trip">
+        <div class="empty-icon">🗺️</div>
+        <div class="empty-title">开始规划你的旅程</div>
+        <div class="empty-desc">点击下方「＋ 设置起点」，输入你出发的城市</div>
+      </div>`;
+    const tc = document.querySelector('.travel-card');
+    if(tc) tc.style.display = 'none';
+    // 更新添加按钮文字
+    const addBtn = document.getElementById('addWp');
+    if(addBtn && editing) addBtn.textContent = '＋ 设置起点';
+    return;
+  }
+  const tc = document.querySelector('.travel-card');
+  if(tc) tc.style.display = '';
   document.getElementById('routeList').innerHTML = cities.map((c,i)=>{
     const num = i===0 ? 1 : (i===cities.length-1 ? 1 : i+1);
     const ops = editing
@@ -789,6 +816,13 @@ function renderRoute(){
       else if(act==='editEnd') openEndEdit(idx);
     };
   });
+  // 动态更新添加按钮文字
+  const addBtn = document.getElementById('addWp');
+  if(addBtn && editing){
+    if(cities.length === 0) addBtn.textContent = '＋ 设置起点';
+    else if(cities.length === 1) addBtn.textContent = '＋ 设置终点';
+    else addBtn.textContent = '＋ 添加途经点';
+  }
 }
 
 function moveCity(from,to){
@@ -1071,9 +1105,15 @@ document.getElementById('saveWp').onclick=()=>{
     note('已更新'+(isStart?'出发点':'返回点')+'：'+newName);
     return;
   }
-  // —— 普通添加途经点 ——
+  // —— 添加点：空→起点，1个点→终点，2+→途经点 ——
   if(cities.some(c=>c.name===name)){ note('该地点已在路线中'); return; }
-  cities.splice(cities.length-1,0,{name, pos:[lng,lat], day:'', id:'wp'+Date.now()});
+  if(cities.length === 0){
+    cities.push({name:name+'（出发地）', pos:[lng,lat], day:'Day 1', id:'wp'+Date.now()});
+  } else if(cities.length === 1){
+    cities.push({name:name+'（返回）', pos:[lng,lat], day:'Day 2', id:'wp'+Date.now()});
+  } else {
+    cities.splice(cities.length-1,0,{name, pos:[lng,lat], day:'', id:'wp'+Date.now()});
+  }
   renumberDays(); renderRoute(); renderTimeline();
   if(window.__redrawMap) window.__redrawMap();
   wpMask.style.display='none';
@@ -1262,16 +1302,18 @@ document.getElementById('zoomOut').onclick=()=>{scale=Math.max(.85,scale-.08);ap
 document.getElementById('reset').onclick=()=>{scale=1;applyZoom()};
 
 renumberDays();
-selectCity('康定');
+renderRoute();
+if(cities.length > 0) selectCity(cities[0].name);
 
 // ===== 标题可编辑（点击进入编辑，失焦/回车保存，localStorage 持久化）=====
 (function(){
   const el=document.getElementById('appTitle');
   const KEY='chuanxi_trip_title';
-  let base='川西环线之旅';
+  let base = isNewTrip ? '我的旅行计划' : '川西环线之旅';
   let saved=null;
-  try{ saved=localStorage.getItem(KEY); }catch(e){}
+  if(!isNewTrip){ try{ saved=localStorage.getItem(KEY); }catch(e){} }
   if(saved){ base=saved; el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP'; }
+  else { el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP'; }
   const commit=()=>{
     let v=(el.textContent||'').replace(/✎/g,'').trim();
     if(!v) v=base;

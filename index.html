@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>旅行规划 · 开始你的下一段旅程</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    min-height:100vh;
+    background:linear-gradient(160deg,#0ea5e9 0%,#06b6d4 40%,#10b981 100%);
+    color:#1e293b;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:40px 20px;
+    overflow-x:hidden;
+  }
+  .hero{
+    text-align:center;
+    max-width:640px;
+    margin-bottom:48px;
+    animation:fadeUp .8s ease-out;
+  }
+  .hero .emoji{font-size:56px;margin-bottom:16px;display:block}
+  .hero h1{
+    font-size:clamp(28px,5vw,42px);
+    font-weight:800;
+    color:#fff;
+    letter-spacing:1px;
+    margin-bottom:14px;
+    text-shadow:0 2px 12px rgba(0,0,0,.15);
+  }
+  .hero p{
+    font-size:clamp(14px,2.5vw,17px);
+    color:rgba(255,255,255,.9);
+    line-height:1.7;
+    max-width:480px;
+    margin:0 auto;
+  }
+  .start-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    margin-top:36px;
+    padding:18px 44px;
+    font-size:18px;
+    font-weight:700;
+    color:#0e7490;
+    background:#fff;
+    border:none;
+    border-radius:50px;
+    cursor:pointer;
+    box-shadow:0 8px 30px rgba(0,0,0,.18);
+    transition:transform .2s,box-shadow .2s;
+    text-decoration:none;
+  }
+  .start-btn:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(0,0,0,.25)}
+  .start-btn:active{transform:translateY(0)}
+  .start-btn .arrow{font-size:20px;transition:transform .2s}
+  .start-btn:hover .arrow{transform:translateX(4px)}
+  .features{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    max-width:720px;
+    width:100%;
+    animation:fadeUp 1s ease-out;
+  }
+  .feature{
+    background:rgba(255,255,255,.95);
+    border-radius:16px;
+    padding:24px 20px;
+    text-align:center;
+    box-shadow:0 4px 20px rgba(0,0,0,.1);
+    backdrop-filter:blur(10px);
+  }
+  .feature .icon{font-size:32px;margin-bottom:10px;display:block}
+  .feature h3{font-size:15px;font-weight:700;color:#0f172a;margin-bottom:6px}
+  .feature p{font-size:12px;color:#64748b;line-height:1.6}
+  .footer{
+    margin-top:40px;
+    font-size:12px;
+    color:rgba(255,255,255,.6);
+    text-align:center;
+  }
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(24px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @media(max-width:600px){
+    body{padding:32px 16px;justify-content:flex-start;padding-top:60px}
+    .hero{margin-bottom:32px}
+    .hero .emoji{font-size:44px}
+    .start-btn{padding:16px 36px;font-size:16px;margin-top:28px}
+    .features{grid-template-columns:1fr;gap:12px;max-width:400px}
+    .feature{padding:18px 16px;display:flex;align-items:center;gap:14px;text-align:left}
+    .feature .icon{font-size:28px;margin-bottom:0;flex-shrink:0}
+    .feature h3{font-size:14px;margin-bottom:2px}
+    .feature p{font-size:11px}
+  }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <span class="emoji">🧭</span>
+    <h1>旅行规划</h1>
+    <p>输入你想去的地方，自动规划最优路线，<br>不走回头路，每一天都值得期待。</p>
+    <a href="chuanxi_travel_amap_mvp_v2.html?new=1" class="start-btn">
+      开始一段新的旅程 <span class="arrow">→</span>
+    </a>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <span class="icon">📍</span>
+      <div>
+        <h3>自由添加景点</h3>
+        <p>输入任意城市或景点，自动定位坐标</p>
+      </div>
+    </div>
+    <div class="feature">
+      <span class="icon">🛣️</span>
+      <div>
+        <h3>智能路线优化</h3>
+        <p>动态规划算最短路径，天然避免回头路</p>
+      </div>
+    </div>
+    <div class="feature">
+      <span class="icon">📅</span>
+      <div>
+        <h3>每日行程细化</h3>
+        <p>按天安排交通、景点、餐饮、住宿</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Travel Planning Demo · 基于高德地图</div>
+</body>
+</html>
