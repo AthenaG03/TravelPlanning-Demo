@@ -260,7 +260,7 @@
 
         <div class="popup" id="popup" style="display:none">
           <h3 id="popupCity">康定 <span class="blue">Day 2</span></h3>
-          <p>⌁ 海拔：2560 m</p>
+          <p>⌁ 海拔：<span id="popupAlt">2560 m</span></p>
           <p>▣ 预计停留：1天</p>
           <button class="btn primary" style="width:100%;height:34px" id="viewDetail">查看详情</button>
         </div>
@@ -1299,6 +1299,21 @@ function updateDayDate(dayLabel){
   const d=new Date(start); d.setDate(d.getDate()+(+m[1]-1));
   dd.textContent=fmtDate(d)+'　›';
 }
+// ===== 单点高程查询：Open-Elevation（SRTM 全球高程，免 Key、支持跨域、手机可用）=====
+let altReqId=0;
+function fetchAltitude(pos){
+  const el=document.getElementById('popupAlt');
+  if(!el || !pos || pos.length<2) return;
+  const rid=++altReqId;
+  el.textContent='查询中…';
+  const url=`https://api.open-elevation.com/api/v1/lookup?locations=${pos[1].toFixed(4)},${pos[0].toFixed(4)}`;
+  const done=v=>{ if(rid===altReqId) el.textContent=v; };
+  const timer=setTimeout(()=>done('—'), 8000);
+  fetch(url).then(r=>r.json()).then(d=>{
+    const e=d && d.results && d.results[0] && d.results[0].elevation;
+    done(e!=null && isFinite(e) ? Math.round(e)+' m' : '—');
+  }).catch(()=>done('—')).finally(()=>clearTimeout(timer));
+}
 function selectCity(name){
   currentCity=name;
   const core=name.replace('（出发地）','').replace('（返回）','');
@@ -1308,6 +1323,7 @@ function selectCity(name){
   updateDayDate(found?.day);
   document.getElementById('popupCity').innerHTML = `${core} <span class="blue">${found?.day || ''}</span>`;
   document.getElementById('popup').style.display = found ? '' : 'none';
+  if(found && found.pos) fetchAltitude(found.pos);
   renderRoute(); renderTimeline();
   document.querySelectorAll('.marker').forEach(m=>m.style.filter = m.dataset.city===core ? 'drop-shadow(0 0 8px rgba(47,125,246,.45))' : '');
 }
