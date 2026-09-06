@@ -449,11 +449,13 @@
     async function planRealRoute() {
       const pts = cities.filter(c => c.pos);
       if (pts.length < 2) return false;
+      window.__lastRouteErr = '';
       const fetchSeg = (o, d, retry = 1) =>
         fetch(`https://restapi.amap.com/v3/direction/driving?origin=${o}&destination=${d}&key=${WEB_KEY}&extensions=all`)
           .then(r => r.json())
           .then(data => {
             if (data.status !== '1' || !data.route || !data.route.paths || !data.route.paths[0]) {
+              window.__lastRouteErr = (data.infocode ? data.infocode + ' ' : '') + (data.info || '未知错误');
               if (retry > 0) return fetchSeg(o, d, retry - 1);
               return null;
             }
@@ -466,7 +468,10 @@
             });
             return coords;
           })
-          .catch(() => (retry > 0 ? fetchSeg(o, d, retry - 1) : null));
+          .catch(() => {
+            window.__lastRouteErr = window.__lastRouteErr || '网络请求失败';
+            return (retry > 0 ? fetchSeg(o, d, retry - 1) : null);
+          });
       const segs = [];
       for (let i = 0; i < pts.length - 1; i++) {
         const o = pts[i].pos.join(',');
@@ -500,7 +505,17 @@
     async function planRoute() {
       clearRouteLines();
       const ok = await planRealRoute();
-      if (!ok) drawFallbackRoute();
+      if (!ok) {
+        drawFallbackRoute();
+        const err = window.__lastRouteErr;
+        if (err) {
+          if (err.includes('10005') || err.includes('INVALID_USER_IP')) {
+            note("真实路线失败（IP 白名单拒绝，code 10005）：手机网络 IP 不在高德 Web 服务 Key 白名单，请到高德控制台将白名单设为 0.0.0.0/0，已绘制示意虚线。");
+          } else {
+            note("真实路线失败：" + err + "，已绘制示意虚线。");
+          }
+        }
+      }
     }
 
     buildMarkers();
