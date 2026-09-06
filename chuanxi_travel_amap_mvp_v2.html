@@ -35,7 +35,7 @@
   .actions{display:flex;gap:10px}
   .btn{height:40px;padding:0 16px;border:1px solid #dfe6ef;border-radius:9px;background:#fff;color:#253142;cursor:pointer}
   .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
-  .main{display:flex;flex:1;min-height:0}
+  .main{display:flex;flex:1;min-height:0;position:relative}
   .sidebar{
     width:410px;background:#f8fafc;border-right:1px solid var(--line);padding:18px 16px;overflow:auto;z-index:12
   }
@@ -143,19 +143,27 @@
     .sidebar{width:350px}.title{font-size:17px}
   }
   @media(max-width:720px){
-    header{height:66px;padding:0 12px;gap:8px}
+    header{height:64px;padding:0 12px;gap:8px}
     .brand{gap:10px;min-width:0}
-    .logo{width:36px;height:36px;font-size:15px;border-radius:10px}
-    .title{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw}
-    .sub{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw}
+    .logo{width:34px;height:34px;font-size:15px;border-radius:10px;flex-shrink:0}
+    .title{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36vw}
+    .sub{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36vw}
     .actions{gap:6px;flex-shrink:0}
-    .btn{height:36px;padding:0 10px;font-size:12px}
+    .btn{height:34px;padding:0 10px;font-size:12px}
     .btn.primary{display:none}
-    .sidebar{position:absolute;left:0;bottom:0;width:100%;height:46%;border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
-    .mapwrap{height:100%}.section.route-section{display:none}
-    .travel-card{left:12px;top:12px;min-width:210px}.popup{display:none}
+    .main{position:relative}
+    /* 地图容器只占可见高度（上方），与底部抽屉精确衔接，保证 fitView 比例正确 */
+    .mapwrap{height:54%}
+    .sidebar{position:absolute;left:0;bottom:0;width:100%;height:46%;border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(31,50,81,.08)}
+    .section.route-section{display:none}
+    .travel-card{left:12px;top:12px;min-width:0;max-width:calc(100% - 24px);padding:9px 12px;display:flex;gap:10px;align-items:center;font-size:11px;border-radius:10px}
+    .travel-card .stat{white-space:nowrap}
+    /* 图例移到地图顶部 travel-card 下方，避免被底部抽屉遮挡 */
+    .legend{left:12px;top:74px;right:auto;bottom:auto;flex-direction:column}
+    .zoom-label{display:none}
+    .popup{display:none}
     .modal{width:calc(100vw - 32px)}
-    .legend{bottom:calc(18px + env(safe-area-inset-bottom))}
+    .form input,.form select{font-size:16px}  /* 防止 iOS 聚焦缩放 */
   }
 </style>
 </head>
