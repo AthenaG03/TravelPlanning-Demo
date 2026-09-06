@@ -209,7 +209,7 @@
 
       <section class="section">
         <div class="day-head">
-          <div class="day-title" id="dayTitle">Day 2 · 康定</div>
+          <div class="day-title" id="dayTitle">Day 1</div>
           <div class="day-date" id="dayDate">6月11日　›</div>
         </div>
         <div class="tabs">
@@ -622,7 +622,7 @@ const cities = isNewTrip ? [] : [
 ];
 window.__routeCities = cities;
 
-let currentCity = '康定';
+let currentCity = isNewTrip ? '' : '康定';
 let items = {
   '康定': [
     {time:'08:00',name:'从成都出发',type:'交通',desc:'预计行驶 5h20m · 314km'},
@@ -1114,7 +1114,9 @@ document.getElementById('saveWp').onclick=()=>{
   } else {
     cities.splice(cities.length-1,0,{name, pos:[lng,lat], day:'', id:'wp'+Date.now()});
   }
-  renumberDays(); renderRoute(); renderTimeline();
+  renumberDays(); renderRoute();
+  if(!currentCity && cities.length > 0) selectCity(cities[0].name);
+  else renderTimeline();
   if(window.__redrawMap) window.__redrawMap();
   wpMask.style.display='none';
   wpName.value=''; wpLng.value=''; wpLat.value='';
@@ -1304,6 +1306,10 @@ document.getElementById('reset').onclick=()=>{scale=1;applyZoom()};
 renumberDays();
 renderRoute();
 if(cities.length > 0) selectCity(cities[0].name);
+else {
+  document.getElementById('dayTitle').textContent = '选择一个城市';
+  document.getElementById('timeline').innerHTML = '<div style="padding:20px;text-align:center;color:#8a96a7;font-size:13px">添加起点后开始规划每天行程</div>';
+}
 
 // ===== 标题可编辑（点击进入编辑，失焦/回车保存，localStorage 持久化）=====
 (function(){
