@@ -186,7 +186,7 @@
 <div class="app">
   <header>
     <div class="brand">
-      <div class="logo">川</div>
+      <div class="logo" id="appLogo">川</div>
       <div>
         <div class="title" id="appTitle" title="点击编辑标题">川西环线之旅 ✎</div>
         <div class="sub"><span id="subDays">6天5晚</span> · <span id="subDates" title="点击编辑日期">2024年6月10日 → 6月15日</span></div>
@@ -747,6 +747,7 @@ function renumberDays(){
   if(n === 0){
     const days=document.getElementById('subDays');
     if(days) days.textContent = '待规划';
+    if(window.__syncTripDates) window.__syncTripDates();
     return;
   }
   cities.forEach((c,i)=>{
@@ -754,6 +755,7 @@ function renumberDays(){
   });
   const days=document.getElementById('subDays');
   if(days) days.textContent = `${n}天${n-1}晚`;
+  if(window.__syncTripDates) window.__syncTripDates();
 }
 
 function isEnd(i){ return i===0 || i===cities.length-1; }
@@ -1353,12 +1355,18 @@ else {
 // ===== 标题可编辑（点击进入编辑，失焦/回车保存，localStorage 持久化）=====
 (function(){
   const el=document.getElementById('appTitle');
+  const logo=document.getElementById('appLogo');
   const KEY='chuanxi_trip_title';
   let base = isNewTrip ? '我的旅行计划' : '川西环线之旅';
   let saved=null;
   if(!isNewTrip){ try{ saved=localStorage.getItem(KEY); }catch(e){} }
+  function syncLogo(v){
+    const ch=(v||'').trim().charAt(0) || (isNewTrip ? '我' : '川');
+    if(logo) logo.textContent=ch;
+  }
   if(saved){ base=saved; el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP'; }
   else { el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP'; }
+  syncLogo(base);
   const commit=()=>{
     let v=(el.textContent||'').replace(/✎/g,'').trim();
     if(!v) v=base;
@@ -1366,6 +1374,7 @@ else {
     try{ localStorage.setItem(KEY, v); }catch(e){}
     el.classList.remove('editing'); el.setAttribute('contenteditable','false');
     el.textContent=base+' ✎'; document.title=base+' · 旅行线路管理 MVP';
+    syncLogo(base);
   };
   el.addEventListener('click',()=>{
     if(el.getAttribute('contenteditable')==='true') return;
@@ -1382,10 +1391,19 @@ else {
 (function(){
   const el=document.getElementById('subDates');
   const KEY='chuanxi_trip_dates';
-  let base='2024年6月10日 → 6月15日';
+  const f=d=>`${d.getMonth()+1}月${d.getDate()}日`;
+  let base;
+  if(isNewTrip){
+    const d0=new Date();
+    const d1=new Date(d0); d1.setDate(d1.getDate()+Math.max(0,cities.length-1));
+    base = `${f(d0)} → ${f(d1)}`;
+  } else {
+    base='2024年6月10日 → 6月15日';
+  }
   let saved=null;
-  try{ saved=localStorage.getItem(KEY); }catch(e){}
+  if(!isNewTrip){ try{ saved=localStorage.getItem(KEY); }catch(e){} }
   if(saved){ base=saved; el.textContent=base; }
+  else { el.textContent=base; }
   updateDayDate(document.querySelector('#dayTitle')?.textContent);
   const commit=()=>{
     let v=(el.textContent||'').replace(/\s*→\s*/g,' → ').replace(/\s+/g,' ').trim();
@@ -1394,6 +1412,16 @@ else {
     try{ localStorage.setItem(KEY, v); }catch(e){}
     el.classList.remove('editing'); el.setAttribute('contenteditable','false');
     el.textContent=base;
+    updateDayDate(document.querySelector('#dayTitle')?.textContent);
+  };
+  // 新建模式：天数变化时联动更新结束日期（保持出发日期不变）
+  window.__syncTripDates = () => {
+    if(!isNewTrip) return;
+    let start = parseStartDate();
+    if(!start){ start = new Date(); }
+    const end = new Date(start); end.setDate(end.getDate()+Math.max(0,cities.length-1));
+    base = `${f(start)} → ${f(end)}`;
+    el.textContent = base;
     updateDayDate(document.querySelector('#dayTitle')?.textContent);
   };
   el.addEventListener('click',()=>{
