@@ -895,15 +895,37 @@ document.getElementById('wpSearch').onclick=async()=>{
   const btn=document.getElementById('wpSearch');
   btn.textContent='定位中…'; btn.disabled=true;
   try{
-    const u=`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(kw)}&key=${window.WEB_KEY||''}`;
-    const r=await (await fetch(u)).json();
-    if(r.status==='1' && r.geocodes && r.geocodes.length){
-      const g=r.geocodes[0];
-      const [lng,lat]=g.location.split(',');
-      wpLng.value=lng; wpLat.value=lat;
-      if(!wpName.value || wpName.value.trim()===kw) wpName.value=kw;
-      note('已定位：'+(g.formatted_address||g.city||kw)+'（'+lng+','+lat+'）');
-    } else note('未找到该名称，请手动输入坐标');
+    if(window.AMap && window.AMap.Geocoder){
+      // JS API Geocoder：走域名白名单鉴权，手机/电脑均可用
+      await new Promise(resolve=>{
+        AMap.plugin(['AMap.Geocoder'], ()=>{
+          const g = new AMap.Geocoder({ city: '全国' });
+          g.getLocation(kw, (status, result)=>{
+            if(status==='complete' && result && result.geocodes && result.geocodes.length){
+              const gc = result.geocodes[0];
+              const lng = gc.location.lng, lat = gc.location.lat;
+              wpLng.value = lng; wpLat.value = lat;
+              if(!wpName.value || wpName.value.trim()===kw) wpName.value = kw;
+              note('已定位：'+(gc.formattedAddress||gc.city||kw)+'（'+lng+','+lat+'）');
+            } else {
+              note('未找到该名称，请手动输入坐标');
+            }
+            resolve();
+          });
+        });
+      });
+    } else {
+      // 回退：Web 服务 Key REST 地理编码（IP 白名单）
+      const u=`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(kw)}&key=${window.WEB_KEY||''}`;
+      const r=await (await fetch(u)).json();
+      if(r.status==='1' && r.geocodes && r.geocodes.length){
+        const g=r.geocodes[0];
+        const [lng,lat]=g.location.split(',');
+        wpLng.value=lng; wpLat.value=lat;
+        if(!wpName.value || wpName.value.trim()===kw) wpName.value=kw;
+        note('已定位：'+(g.formatted_address||g.city||kw)+'（'+lng+','+lat+'）');
+      } else note('未找到该名称，请手动输入坐标');
+    }
   }catch(e){ note('定位失败：'+e.message); }
   btn.textContent='🔍 定位'; btn.disabled=false;
 };
