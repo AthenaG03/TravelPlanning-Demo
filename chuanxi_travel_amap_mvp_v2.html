@@ -193,6 +193,7 @@
       </div>
     </div>
     <div class="actions">
+      <button class="btn" id="savePlanBtn" title="保存规划到本机，可下次继续编辑">💾 保存</button>
       <button class="btn" id="shareBtn" title="复制行程摘要">⌯ 分享</button>
       <button class="btn" id="exportBtn" title="下载行程 HTML 文件">⇩ 导出行程</button>
       <button class="btn primary" id="addPlace">＋ 添加地点</button>
@@ -623,7 +624,7 @@ const cities = isNewTrip ? [] : [
 window.__routeCities = cities;
 
 let currentCity = isNewTrip ? '' : '康定';
-let items = {
+let items = isNewTrip ? {} : {
   '康定': [
     {time:'08:00',name:'从成都出发',type:'交通',desc:'预计行驶 5h20m · 314km'},
     {time:'13:20',name:'午餐',type:'餐饮',desc:'康定藏式牦牛肉汤锅'},
@@ -1488,6 +1489,71 @@ document.getElementById('exportBtn').onclick=()=>{
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
     toast('已导出 '+title+'.html ✓');
   }catch(e){ toast('导出失败：'+e.message); }
+};
+
+// ===== 规划存档：保存到 localStorage，前页可列表浏览/继续编辑 =====
+const PLANS_KEY = 'travel_plans';
+function loadPlans(){ try{ return JSON.parse(localStorage.getItem(PLANS_KEY)) || []; }catch(e){ return []; } }
+function savePlans(list){ try{ localStorage.setItem(PLANS_KEY, JSON.stringify(list)); }catch(e){ toast('保存失败：浏览器存储空间不足'); } }
+
+// —— 加载模式：?load=<id> 恢复已保存规划 ——
+(function(){
+  const id = new URLSearchParams(location.search).get('load');
+  if(!id) return;
+  const plan = loadPlans().find(p=>p.id===id);
+  if(!plan){ toast('未找到该规划存档'); return; }
+  if(Array.isArray(plan.cities) && plan.cities.length){
+    cities.splice(0, cities.length, ...plan.cities.map(c=>({name:c.name, pos:c.pos, day:c.day||'', id:c.id||('wp'+Date.now())})));
+  }
+  if(plan.items && typeof plan.items==='object'){
+    Object.keys(items).forEach(k=>delete items[k]);
+    Object.assign(items, plan.items);
+  }
+  if(plan.title){
+    const el=document.getElementById('appTitle');
+    el.textContent = plan.title + ' ✎';
+    document.title = plan.title + ' · 旅行线路管理 MVP';
+    const logo=document.getElementById('appLogo');
+    if(logo) logo.textContent = plan.title.trim().charAt(0) || '我';
+    try{ localStorage.setItem('chuanxi_trip_title', plan.title); }catch(e){}
+  }
+  if(plan.dates){
+    document.getElementById('subDates').textContent = plan.dates;
+    try{ localStorage.setItem('chuanxi_trip_dates', plan.dates); }catch(e){}
+  }
+  window.__currentPlanId = id;
+  renumberDays(); renderRoute();
+  if(cities.length) selectCity(cities[0].name);
+  // 等待高德地图初始化完成后再重绘路线（否则 Driving 插件未就绪会降级走 REST/虚线）
+  (function waitRedraw(attempt){
+    if(window.__amap && window.__redrawMap){
+      try{ window.__redrawMap(); }catch(e){}
+      return;
+    }
+    if(attempt > 30) return; // 最多等约15秒
+    setTimeout(()=>waitRedraw(attempt+1), 500);
+  })(0);
+  toast('已加载规划「'+(plan.title||'')+'」✓');
+})();
+
+// —— 保存按钮：新建存档或更新当前存档 ——
+document.getElementById('savePlanBtn').onclick=()=>{
+  if(!cities.length){ toast('还没有行程城市，先添加起点再保存'); return; }
+  const title=(document.getElementById('appTitle').textContent||'').replace(' ✎','').trim() || '我的旅行计划';
+  const dates=document.getElementById('subDates')?.textContent||'';
+  const snapshot={
+    id: window.__currentPlanId || ('tp'+Date.now()),
+    title, dates,
+    cities: cities.map(c=>({name:c.name, pos:c.pos, day:c.day, id:c.id})),
+    items: JSON.parse(JSON.stringify(items)),
+    savedAt: new Date().toLocaleString('zh-CN',{hour12:false})
+  };
+  const plans=loadPlans();
+  const idx=plans.findIndex(p=>p.id===snapshot.id);
+  if(idx>=0) plans[idx]=snapshot; else plans.unshift(snapshot);
+  savePlans(plans);
+  window.__currentPlanId=snapshot.id;
+  toast('已保存「'+title+'」✓');
 };
 
 // ===== 轻量 toast 提示 =====

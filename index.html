@@ -86,6 +86,57 @@
     color:rgba(255,255,255,.6);
     text-align:center;
   }
+  .plans{
+    max-width:720px;
+    width:100%;
+    margin-top:44px;
+    animation:fadeUp .9s ease-out;
+  }
+  .plans-head{
+    font-size:18px;
+    font-weight:800;
+    color:#fff;
+    margin-bottom:14px;
+    text-shadow:0 1px 8px rgba(0,0,0,.15);
+  }
+  .plans-list{display:flex;flex-direction:column;gap:12px}
+  .plan-card{
+    background:rgba(255,255,255,.96);
+    border-radius:14px;
+    padding:16px 18px;
+    box-shadow:0 4px 20px rgba(0,0,0,.12);
+    display:flex;
+    align-items:center;
+    gap:14px;
+    cursor:pointer;
+    transition:transform .15s,box-shadow .15s;
+    text-decoration:none;
+    color:#1e293b;
+  }
+  .plan-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.18)}
+  .plan-card .p-icon{
+    width:46px;height:46px;border-radius:12px;flex-shrink:0;
+    background:linear-gradient(135deg,#36c7a0,#55a5ff);
+    color:#fff;font-weight:800;font-size:20px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .plan-card .p-main{flex:1;min-width:0}
+  .plan-card .p-title{font-size:15px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .plan-card .p-meta{font-size:12px;color:#64748b;line-height:1.5}
+  .plan-card .p-go{font-size:13px;color:#0e7490;font-weight:600;flex-shrink:0;display:flex;align-items:center;gap:3px}
+  .plan-card .p-del{
+    flex-shrink:0;border:none;background:none;color:#94a3b8;font-size:16px;cursor:pointer;padding:6px 4px;border-radius:6px;
+  }
+  .plan-card .p-del:hover{color:#e5484d;background:#fdecea}
+  .plans-empty{
+    background:rgba(255,255,255,.9);
+    border-radius:14px;
+    padding:26px 20px;
+    text-align:center;
+    font-size:13px;
+    color:#64748b;
+    line-height:1.7;
+  }
   @keyframes fadeUp{
     from{opacity:0;transform:translateY(24px)}
     to{opacity:1;transform:translateY(0)}
@@ -137,6 +188,59 @@
     </div>
   </div>
 
+  <div class="plans" id="plansBox" style="display:none">
+    <div class="plans-head">🗂️ 我的规划</div>
+    <div class="plans-list" id="plansList"></div>
+  </div>
+  <div class="plans" id="plansEmpty" style="display:none">
+    <div class="plans-head">🗂️ 我的规划</div>
+    <div class="plans-empty">还没有保存的规划，开始一段旅程后点「💾 保存」即可在这里继续编辑或回忆</div>
+  </div>
+
   <div class="footer">Travel Planning Demo · 基于高德地图</div>
+
+<script>
+(function(){
+  const KEY='travel_plans';
+  let plans=[];
+  try{ plans=JSON.parse(localStorage.getItem(KEY))||[]; }catch(e){ plans=[]; }
+  const box=document.getElementById('plansBox');
+  const empty=document.getElementById('plansEmpty');
+  const list=document.getElementById('plansList');
+  const short=s=>s.replace('（出发地）','').replace('（返回）','');
+  function render(){
+    if(!plans.length){ box.style.display='none'; empty.style.display=''; return; }
+    box.style.display=''; empty.style.display='none';
+    list.innerHTML=plans.map(p=>{
+      const n=p.cities?p.cities.length:0;
+      const route=(p.cities||[]).slice(0,3).map(c=>short(c.name||'')).join(' → ')+(n>3?` 等${n}个地点`:'');
+      return `<a class="plan-card" href="chuanxi_travel_amap_mvp_v2.html?load=${encodeURIComponent(p.id)}">
+        <div class="p-icon">${(p.title||'旅').trim().charAt(0)}</div>
+        <div class="p-main">
+          <div class="p-title">${(p.title||'未命名规划')}</div>
+          <div class="p-meta">${p.dates||''} · ${n}天${Math.max(0,n-1)}晚<br>${route} · 保存于 ${p.savedAt||''}</div>
+        </div>
+        <span class="p-go">继续编辑 →</span>
+        <button class="p-del" title="删除该规划">✕</button>
+      </a>`;
+    }).join('');
+    list.querySelectorAll('.plan-card').forEach(card=>{
+      card.addEventListener('click',e=>{
+        if(e.target.closest('.p-del')){
+          e.preventDefault(); e.stopPropagation();
+          const id=new URLSearchParams(new URL(card.href).search).get('load');
+          const title=card.querySelector('.p-title').textContent;
+          if(confirm('删除规划「'+title+'」？此操作不可恢复。')){
+            plans=plans.filter(p=>p.id!==id);
+            try{ localStorage.setItem(KEY,JSON.stringify(plans)); }catch(e2){}
+            render();
+          }
+        }
+      });
+    });
+  }
+  render();
+})();
+</script>
 </body>
 </html>
