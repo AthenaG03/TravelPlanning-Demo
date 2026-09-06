@@ -139,6 +139,8 @@
   .modal{width:420px;background:#fff;border-radius:14px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.22)}
   .modal h3{margin:0 0 15px}.form{display:grid;gap:10px}.form input,.form select{height:40px;border:1px solid #dce4ee;border-radius:8px;padding:0 11px}
   .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  .opt-compare{margin-top:4px;padding:11px 13px;background:#f4f8ff;border:1px solid #dce9fb;border-radius:10px;font-size:13px;color:#24497e;line-height:1.7}
+  .opt-compare b{color:#2f7df6}
   @media(max-width:900px){
     .sidebar{width:350px}.title{font-size:17px}
   }
@@ -196,7 +198,7 @@
   <main class="main">
     <aside class="sidebar">
       <section class="section route-section">
-        <div class="section-head"><div class="section-title">行程路线</div><div class="link" id="editRoute">✎ 编辑路线</div></div>
+        <div class="section-head"><div class="section-title">行程路线</div><div style="display:flex;gap:14px;align-items:center"><span class="link" id="optRoute" title="按最短路径自动重排途经点顺序">🧭 优化路线</span><span class="link" id="editRoute">✎ 编辑路线</span></div></div>
         <div class="route-list" id="routeList"></div>
         <button class="add-wp" id="addWp" style="display:none">＋ 添加途经点</button>
       </section>
@@ -294,6 +296,20 @@
     <div class="modal-actions">
       <button class="btn" id="cancelWp">取消</button>
       <button class="btn primary" id="saveWp">添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="optMask">
+  <div class="modal">
+    <h3 id="optTitle">🧭 智能路线优化</h3>
+    <div class="form">
+      <div class="wp-tip">将按所有途经点的<b>最短总路径</b>自动重排访问顺序，起点/终点保持不变。最短路径天然避免回头路与路线交叉（按各城市坐标直线距离精确计算）。</div>
+      <div class="opt-compare" id="optCompare"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelOpt">取消</button>
+      <button class="btn primary" id="applyOpt">应用优化</button>
     </div>
   </div>
 </div>
@@ -623,6 +639,90 @@ function note(text){
   document.body.appendChild(el);
   setTimeout(()=>el.remove(),4000);
 }
+
+// ===== 智能路线优化：固定起终点的 TSP 最短路径（Held-Karp 动态规划）=====
+function haversineKm(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b[1] - a[1]), dLng = rad(b[0] - a[0]);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[1])) * Math.cos(rad(b[1])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function routeTotalKm(pts) {
+  let sum = 0;
+  for (let i = 0; i < pts.length - 1; i++) sum += haversineKm(pts[i].pos, pts[i + 1].pos);
+  return sum;
+}
+function tspOptimalOrder(citiesArr) {
+  const n = citiesArr.length;
+  const start = 0, end = n - 1;
+  const mids = [];
+  for (let i = 1; i < n - 1; i++) if (citiesArr[i].pos) mids.push(i);
+  const m = mids.length;
+  if (m <= 1) return [...Array(n).keys()];
+  const D = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => haversineKm(citiesArr[i].pos, citiesArr[j].pos)));
+  const FULL = (1 << m) - 1, INF = Infinity;
+  const dp = Array.from({ length: 1 << m }, () => Array(m).fill(INF));
+  const par = Array.from({ length: 1 << m }, () => Array(m).fill(-1));
+  for (let i = 0; i < m; i++) dp[1 << i][i] = D[start][mids[i]];
+  for (let mask = 1; mask <= FULL; mask++) {
+    for (let last = 0; last < m; last++) {
+      if (!(mask & (1 << last)) || dp[mask][last] === INF) continue;
+      for (let nx = 0; nx < m; nx++) {
+        if (mask & (1 << nx)) continue;
+        const nm = mask | (1 << nx), nd = dp[mask][last] + D[mids[last]][mids[nx]];
+        if (nd < dp[nm][nx]) { dp[nm][nx] = nd; par[nm][nx] = last; }
+      }
+    }
+  }
+  let best = INF, bestLast = -1;
+  for (let last = 0; last < m; last++) {
+    const d = dp[FULL][last] + D[mids[last]][end];
+    if (d < best) { best = d; bestLast = last; }
+  }
+  const order = [];
+  let mask = FULL, cur = bestLast;
+  while (cur !== -1) {
+    order.push(mids[cur]);
+    const p = par[mask][cur];
+    mask = mask & ~(1 << cur);
+    cur = p;
+  }
+  order.reverse();
+  return [start, ...order, end];
+}
+const shortN = n => n.replace('（出发地）', '').replace('（返回）', '');
+document.getElementById('optRoute').onclick = () => {
+  const pts = cities.filter(c => c.pos);
+  if (pts.length < 3) { note('至少需要 起点 + 1个途经点 + 终点 才能优化'); return; }
+  const mids = cities.filter((c, i) => i > 0 && i < cities.length - 1 && c.pos);
+  if (mids.length > 12) { note('途经点过多（>12），请精简后再优化'); return; }
+  const curKm = routeTotalKm(pts);
+  const order = tspOptimalOrder(cities);
+  const newKm = routeTotalKm(order.map(i => cities[i]));
+  const better = Math.round((curKm - newKm) / curKm * 100);
+  document.getElementById('optCompare').innerHTML =
+    `当前顺序：约 <b>${curKm.toFixed(1)} km</b>（直线估算）<br>` +
+    `优化顺序：约 <b>${newKm.toFixed(1)} km</b>（直线估算）<br>` +
+    `缩短约 <b>${(curKm - newKm).toFixed(1)} km</b>（${better}%）<br>` +
+    `<span style="font-size:11px;color:#738096">建议顺序：${order.map(i => shortN(cities[i].name)).join(' → ')}</span>`;
+  document.getElementById('optMask').style.display = 'flex';
+  window.__pendingOptOrder = order;
+};
+document.getElementById('applyOpt').onclick = () => {
+  const order = window.__pendingOptOrder;
+  if (!order || !order.length) return;
+  const newCities = order.map(i => cities[i]);
+  cities.splice(0, cities.length, ...newCities); // 原地替换，保持 window.__routeCities 引用一致
+  renumberDays();
+  renderRoute();
+  renderTimeline();
+  if (window.__redrawMap) window.__redrawMap();
+  document.getElementById('optMask').style.display = 'none';
+  window.__pendingOptOrder = null;
+  note('已按最短路径重排路线顺序。');
+};
+document.getElementById('cancelOpt').onclick = () => { document.getElementById('optMask').style.display = 'none'; window.__pendingOptOrder = null; };
+document.getElementById('optMask').onclick = e => { if (e.target === document.getElementById('optMask')) { document.getElementById('optMask').style.display = 'none'; window.__pendingOptOrder = null; } };
 
 function icon(type){ return type==='交通'?'🚗':type==='景点'?'🏔':type==='餐饮'?'🍜':'🏨'; }
 function cls(type){ return type==='交通'?'drive':type==='景点'?'spot':type==='餐饮'?'food':'hotel'; }
