@@ -479,6 +479,8 @@
             });
             resolve(coords.length ? coords : null);
           } else {
+            const info = (result && result.info) || status || '未知错误';
+            if (!window.__lastRouteErr) window.__lastRouteErr = 'Driving(' + info + ')';
             resolve(null);
           }
         });
@@ -556,7 +558,9 @@
         const err = window.__lastRouteErr;
         if (err) {
           if (err.includes('10005') || err.includes('INVALID_USER_IP')) {
-            note("真实路线失败（IP 白名单拒绝，code 10005）：手机网络 IP 不在高德 Web 服务 Key 白名单，请到高德控制台将白名单设为 0.0.0.0/0，已绘制示意虚线。");
+            note("真实路线失败（IP 白名单拒绝，code 10005）：当前网络 IP 不在高德 Web 服务 Key 白名单，请到高德控制台将 Web 服务 Key 的白名单设为 0.0.0.0/0，已绘制示意虚线。");
+          } else if (err.includes('INVALID_USER_SCODE') || err.includes('10008')) {
+            note("真实路线失败（安全密钥无效，code 10008）：JS API Key 的 securityJsCode 与 Key 不匹配或未启用，请到高德控制台核对/重新生成，已绘制示意虚线。");
           } else {
             note("真实路线失败：" + err + "，已绘制示意虚线。");
           }
