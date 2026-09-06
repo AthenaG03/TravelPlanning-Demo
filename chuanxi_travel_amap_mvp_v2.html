@@ -143,11 +143,11 @@
     .sidebar{width:350px}.title{font-size:17px}
   }
   @media(max-width:720px){
-    header{height:64px;padding:0 12px;gap:8px}
-    .brand{gap:10px;min-width:0}
+    header{height:auto;padding:8px 12px 6px;gap:2px 8px;flex-wrap:wrap}
+    .brand{gap:10px;min-width:0;flex:1;align-items:center}
     .logo{width:34px;height:34px;font-size:15px;border-radius:10px;flex-shrink:0}
-    .title{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36vw}
-    .sub{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36vw}
+    .title{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+    .sub{font-size:11px;max-width:none;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .actions{gap:6px;flex-shrink:0}
     .btn{height:34px;padding:0 10px;font-size:12px}
     .btn.primary{display:none}
@@ -159,7 +159,7 @@
     .travel-card{left:12px;top:12px;min-width:0;max-width:calc(100% - 24px);padding:9px 12px;display:flex;gap:10px;align-items:center;font-size:11px;border-radius:10px}
     .travel-card .stat{white-space:nowrap}
     /* 图例移到地图顶部 travel-card 下方，避免被底部抽屉遮挡 */
-    .legend{left:12px;top:74px;right:auto;bottom:auto;flex-direction:column}
+    .legend{left:12px;top:74px;right:auto;bottom:auto}
     .zoom-label{display:none}
     .popup{display:none}
     .modal{width:calc(100vw - 32px)}
