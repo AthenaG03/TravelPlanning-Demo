@@ -368,7 +368,7 @@
     const AMap = await AMapLoader.load({
       key: "6376906e6c474d29195e33493c947572",
       version: "2.0",
-      plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.Driving", "AMap.Geocoder"],
+      plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.Driving", "AMap.Geocoder", "AMap.PlaceSearch"],
       securityJsCode: "a045ac731f22fb11f30713cfad26c44b" // 服务插件（Driving/Geocoder）鉴权必需
     });
 
@@ -1134,12 +1134,51 @@ const RANK_TYPE = {'景点':'110000','餐饮':'050000','住宿':'100000'};
 const rankCache = {};
 let rankReqId = 0;
 async function fetchAmapRank(core, filter){
-  const key = "5d59b9c56167decdd7fc9e630fb4aed9";
   const types = RANK_TYPE[filter] || '';
   const kws = RANK_KW[filter] || [];
   const cacheKey = core + '|' + filter;
   if(rankCache[cacheKey]) return rankCache[cacheKey];
-  // 城市级：place/text + city 参数
+
+  // —— 优先用 JS API PlaceSearch（域名白名单鉴权，手机可用）——
+  if(window.AMap && window.AMap.PlaceSearch){
+    // 1) 城市级搜索
+    for(const kw of kws){
+      try{
+        const list = await new Promise((resolve)=>{
+          const ps = new AMap.PlaceSearch({city:core, pageSize:20, pageIndex:1, extensions:'all', type:types});
+          ps.search(kw, (status, result)=>{
+            if(status==='complete' && result.poiList && result.poiList.pois && result.poiList.pois.length){
+              resolve(normAmapPois(result.poiList.pois, core, filter, kw));
+            } else resolve(null);
+          });
+          setTimeout(()=>resolve(null), 8000);
+        });
+        if(list && list.length){ rankCache[cacheKey]=list; return list; }
+      }catch(e){}
+    }
+    // 2) 坐标周边搜索（镇级/景点级地点，任何攻略都可用）
+    const pt = (window.__routeCities||[]).find(c=>c.name.replace('（出发地）','').replace('（返回）','')===core);
+    if(pt && pt.pos){
+      const center = new AMap.LngLat(pt.pos[0], pt.pos[1]);
+      for(const kw of kws){
+        try{
+          const list = await new Promise((resolve)=>{
+            const ps = new AMap.PlaceSearch({pageSize:20, pageIndex:1, extensions:'all', type:types});
+            ps.searchNearBy(kw, center, 30000, (status, result)=>{
+              if(status==='complete' && result.poiList && result.poiList.pois && result.poiList.pois.length){
+                resolve(normAmapPois(result.poiList.pois, core, filter, kw));
+              } else resolve(null);
+            });
+            setTimeout(()=>resolve(null), 8000);
+          });
+          if(list && list.length){ rankCache[cacheKey]=list; return list; }
+        }catch(e){}
+      }
+    }
+  }
+
+  // —— 回退：Web 服务 REST API（IP 白名单，电脑可用）——
+  const key = "5d59b9c56167decdd7fc9e630fb4aed9";
   const city = AMAP_CITY_CFG[core];
   if(city){
     for(const kw of kws){
@@ -1153,7 +1192,6 @@ async function fetchAmapRank(core, filter){
       }catch(e){}
     }
   }
-  // 镇级/未收录城市：place/around 坐标周边搜索（用行程里的坐标，任何攻略都可用）
   const pt = (window.__routeCities||[]).find(c=>c.name.replace('（出发地）','').replace('（返回）','')===core);
   if(pt && pt.pos){
     const loc = pt.pos[0] + ',' + pt.pos[1];
