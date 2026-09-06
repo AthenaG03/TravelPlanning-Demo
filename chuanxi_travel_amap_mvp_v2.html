@@ -150,7 +150,13 @@
     .sub{font-size:11px;max-width:none;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .actions{gap:6px;flex-shrink:0}
     .btn{height:34px;padding:0 10px;font-size:12px}
-    .btn.primary{display:none}
+    /* 只隐藏 header 的"添加地点"，不能动弹窗里的 .btn.primary（保存按钮） */
+    #addPlace{display:none}
+    /* 弹窗内 flex 行防溢出：输入框允许收缩，按钮不缩 */
+    .modal .form>div{min-width:0}
+    .modal .form input{min-width:0;flex:1 1 auto}
+    .modal .form .btn{flex-shrink:0}
+    .wp-tip{max-width:100%;word-break:break-word}
     .main{position:relative}
     /* 地图容器只占可见高度（上方），与底部抽屉精确衔接，保证 fitView 比例正确 */
     .mapwrap{height:54%}
