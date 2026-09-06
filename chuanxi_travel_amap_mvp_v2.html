@@ -436,8 +436,9 @@
       }
     }
 
-    // ===== 真实驾车路线（Web 服务 Key + REST 接口，逐段规划拼接闭环）=====
-    // Web 服务 Key 无需安全密钥（靠 IP 白名单鉴权）；闭环需拆成相邻段分别请求
+    // ===== 真实驾车路线（JS API Driving 插件优先，Web 服务 Key REST 回退）=====
+    // 优先用 AMap.Driving：走域名白名单鉴权，手机/任意设备访问 GitHub Pages 均可用
+    // 回退 Web 服务 Key（IP 白名单鉴权，手机 IP 动态变化时可能被拒）
     const WEB_KEY = "5d59b9c56167decdd7fc9e630fb4aed9";
     window.WEB_KEY = WEB_KEY; // 供外层脚本（途经点/端点定位）复用
 
@@ -446,10 +447,59 @@
       if (window.__fallbackLine) { window.__fallbackLine.setMap(null); window.__fallbackLine = null; }
     }
 
-    async function planRealRoute() {
+    function drawRealLine(all, sourceNote) {
+      clearRouteLines();
+      window.__realRouteLine = new AMap.Polyline({
+        path: all,
+        strokeColor: '#2f7df6',
+        strokeWeight: 6,
+        strokeOpacity: 1,
+        strokeStyle: 'solid',
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
+      window.__realRouteLine.setMap(map);
+      map.setFitView([...markers, window.__realRouteLine]);
+      note(sourceNote);
+      return true;
+    }
+
+    // 方案A：AMap.Driving（JS API 域名白名单，手机最稳）
+    async function planRealRouteDriving() {
       const pts = cities.filter(c => c.pos);
       if (pts.length < 2) return false;
-      window.__lastRouteErr = '';
+      const driving = new AMap.Driving({ policy: AMap.DrivingPolicy.LEAST_TIME });
+      const seg = (o, d) => new Promise(resolve => {
+        driving.search(o, d, (status, result) => {
+          if (status === 'complete' && result && result.routes && result.routes[0] && result.routes[0].steps) {
+            const coords = [];
+            result.routes[0].steps.forEach(s => {
+              (s.path || []).forEach(p => coords.push([p.lng, p.lat]));
+            });
+            resolve(coords.length ? coords : null);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      const segs = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        segs.push(seg(pts[i].pos, pts[i + 1].pos));
+      }
+      const results = await Promise.all(segs);
+      if (results.some(r => !r || !r.length)) return false;
+      const all = [];
+      results.forEach((coords, i) => {
+        all.push(...(i === 0 ? coords : coords.slice(1))); // 去掉段间重复点
+      });
+      if (all.length < 2) return false;
+      return drawRealLine(all, "已用 JS API 绘制真实驾车路线。");
+    }
+
+    // 方案B：Web 服务 Key + REST 接口（IP 白名单，电脑可用）
+    async function planRealRouteRest() {
+      const pts = cities.filter(c => c.pos);
+      if (pts.length < 2) return false;
       const fetchSeg = (o, d, retry = 1) =>
         fetch(`https://restapi.amap.com/v3/direction/driving?origin=${o}&destination=${d}&key=${WEB_KEY}&extensions=all`)
           .then(r => r.json())
@@ -485,21 +535,16 @@
         all.push(...(i === 0 ? coords : coords.slice(1))); // 去掉段间重复点
       });
       if (all.length < 2) return false;
+      return drawRealLine(all, "已用 Web 服务 Key 绘制真实驾车路线。");
+    }
 
-      clearRouteLines();
-      window.__realRouteLine = new AMap.Polyline({
-        path: all,
-        strokeColor: '#2f7df6',
-        strokeWeight: 6,
-        strokeOpacity: 1,
-        strokeStyle: 'solid',
-        lineJoin: 'round',
-        lineCap: 'round'
-      });
-      window.__realRouteLine.setMap(map);
-      map.setFitView([...markers, window.__realRouteLine]);
-      note("已用 Web 服务 Key 绘制真实驾车路线。");
-      return true;
+    async function planRealRoute() {
+      const pts = cities.filter(c => c.pos);
+      if (pts.length < 2) return false;
+      window.__lastRouteErr = '';
+      if (await planRealRouteDriving()) return true;
+      if (await planRealRouteRest()) return true;
+      return false;
     }
 
     async function planRoute() {
