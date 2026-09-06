@@ -261,15 +261,18 @@
 
 <div class="modal-mask" id="wpMask">
   <div class="modal">
-    <h3>添加途经点</h3>
+    <h3 id="wpTitle">添加途经点</h3>
     <div class="form">
-      <input id="wpName" list="wpPresets" placeholder="城市 / 地名，如：丹巴" />
+      <div style="display:flex;gap:8px">
+        <input id="wpName" list="wpPresets" placeholder="城市 / 地名，如：丹巴" style="flex:1" />
+        <button class="btn" id="wpSearch" title="从高德搜索该名称的坐标">🔍 定位</button>
+      </div>
       <datalist id="wpPresets"></datalist>
       <div style="display:flex;gap:10px">
         <input id="wpLng" placeholder="经度，如 101.89" style="flex:1" />
         <input id="wpLat" placeholder="纬度，如 30.88" style="flex:1" />
       </div>
-      <div class="wp-tip">选择上方常用地点会自动填入参考坐标；也可手动输入。坐标为行政区/景区近似值，请自行核对精度后再保存。</div>
+      <div class="wp-tip" id="wpTip">输入名称后点「🔍 定位」自动搜索坐标；也可手动输入。坐标为行政区/景区近似值，请自行核对精度后再保存。</div>
     </div>
     <div class="modal-actions">
       <button class="btn" id="cancelWp">取消</button>
@@ -425,6 +428,7 @@
     // ===== 真实驾车路线（Web 服务 Key + REST 接口，逐段规划拼接闭环）=====
     // Web 服务 Key 无需安全密钥（靠 IP 白名单鉴权）；闭环需拆成相邻段分别请求
     const WEB_KEY = "5d59b9c56167decdd7fc9e630fb4aed9";
+    window.WEB_KEY = WEB_KEY; // 供外层脚本（途经点/端点定位）复用
 
     function clearRouteLines() {
       if (window.__realRouteLine) { window.__realRouteLine.setMap(null); window.__realRouteLine = null; }
@@ -567,7 +571,10 @@ function renderRoute(){
     const num = i===0 ? 1 : (i===cities.length-1 ? 1 : i+1);
     const ops = editing
       ? (isEnd(i)
-          ? `<span class="drag-handle" title="起点/终点固定，不可调整" style="cursor:not-allowed">≡</span>`
+          ? `<div class="edit-ops">
+              <button class="mini" data-act="editEnd" title="修改起点/终点的城市">✎</button>
+              <span class="drag-handle" title="起点/终点不可删除，但可修改城市" style="cursor:not-allowed">≡</span>
+            </div>`
           : `<div class="edit-ops">
               <button class="mini" data-act="up" title="上移">▲</button>
               <button class="mini" data-act="down" title="下移">▼</button>
@@ -597,6 +604,7 @@ function renderRoute(){
       if(act==='up') moveCity(idx, idx-1);
       else if(act==='down') moveCity(idx, idx+1);
       else if(act==='del') delCity(idx);
+      else if(act==='editEnd') openEndEdit(idx);
     };
   });
 }
@@ -789,15 +797,77 @@ wpName.addEventListener('input',()=>{
   const hit=PRESETS.find(p=>p[0]===wpName.value.trim());
   if(hit){ wpLng.value=hit[1]; wpLat.value=hit[2]; }
 });
-document.getElementById('addWp').onclick=()=>{ wpMask.style.display='flex'; wpName.focus(); };
-document.getElementById('cancelWp').onclick=()=>wpMask.style.display='none';
-wpMask.onclick=e=>{ if(e.target===wpMask) wpMask.style.display='none'; };
+
+// ===== 起点/终点编辑：修改城市 + 高德地理编码自动定位 =====
+let endEditIdx = -1; // -1=普通添加途经点；0=起点；cities.length-1=终点
+const wpTitle=document.getElementById('wpTitle');
+const wpTip=document.getElementById('wpTip');
+function openEndEdit(idx){
+  endEditIdx = idx;
+  const c = cities[idx];
+  const isStart = idx===0;
+  wpTitle.textContent = isStart ? '修改出发点' : '修改返回点';
+  document.getElementById('saveWp').textContent = '保存';
+  wpTip.textContent = '输入新的城市/地名后点「🔍 定位」自动搜索坐标，或直接手动修改坐标。起点/终点不可删除，但可改成任意地点。';
+  wpName.value = c.name.replace('（出发地）','').replace('（返回）','');
+  wpLng.value = c.pos[0]; wpLat.value = c.pos[1];
+  wpMask.style.display='flex'; wpName.focus();
+}
+document.getElementById('wpSearch').onclick=async()=>{
+  const kw=wpName.value.trim();
+  if(!kw){ note('请先输入名称'); return; }
+  const btn=document.getElementById('wpSearch');
+  btn.textContent='定位中…'; btn.disabled=true;
+  try{
+    const u=`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(kw)}&key=${window.WEB_KEY||''}`;
+    const r=await (await fetch(u)).json();
+    if(r.status==='1' && r.geocodes && r.geocodes.length){
+      const g=r.geocodes[0];
+      const [lng,lat]=g.location.split(',');
+      wpLng.value=lng; wpLat.value=lat;
+      if(!wpName.value || wpName.value.trim()===kw) wpName.value=kw;
+      note('已定位：'+(g.formatted_address||g.city||kw)+'（'+lng+','+lat+'）');
+    } else note('未找到该名称，请手动输入坐标');
+  }catch(e){ note('定位失败：'+e.message); }
+  btn.textContent='🔍 定位'; btn.disabled=false;
+};
+document.getElementById('addWp').onclick=()=>{ endEditIdx=-1; wpTitle.textContent='添加途经点'; document.getElementById('saveWp').textContent='添加'; wpTip.textContent='输入名称后点「🔍 定位」自动搜索坐标；也可手动输入。坐标为行政区/景区近似值，请自行核对精度后再保存。'; wpMask.style.display='flex'; wpName.focus(); };
+document.getElementById('cancelWp').onclick=()=>{ wpMask.style.display='none'; endEditIdx=-1; wpTitle.textContent='添加途经点'; document.getElementById('saveWp').textContent='添加'; };
+wpMask.onclick=e=>{ if(e.target===wpMask){ wpMask.style.display='none'; endEditIdx=-1; wpTitle.textContent='添加途经点'; document.getElementById('saveWp').textContent='添加'; } };
 document.getElementById('saveWp').onclick=()=>{
   const name=wpName.value.trim();
   const lng=parseFloat(wpLng.value);
   const lat=parseFloat(wpLat.value);
   if(!name){ note('请填写地点名称'); return; }
-  if(!isFinite(lng)||!isFinite(lat)){ note('请填写有效的经纬度（从上方选择地点可自动填入参考坐标）'); return; }
+  if(!isFinite(lng)||!isFinite(lat)){ note('请填写有效的经纬度（点「🔍 定位」可自动获取）'); return; }
+  // —— 起点/终点编辑分支 ——
+  if(endEditIdx>=0){
+    const idx=endEditIdx;
+    const isStart=idx===0;
+    const suffix=isStart?'（出发地）':'（返回）';
+    const base=name.replace('（出发地）','').replace('（返回）','').trim();
+    const newName=base+suffix;
+    if(cities.some((c,i)=>i!==idx && c.name===newName)){ note('该地点已在路线中'); return; }
+    const oldName=cities[idx].name;
+    cities[idx].name=newName;
+    cities[idx].pos=[lng,lat];
+    // 迁移该城市已有事项数据到新名称
+    if(items[oldName]){ if(!items[newName]) items[newName]=items[oldName]; delete items[oldName]; }
+    if(currentCity===oldName) currentCity=newName;
+    // 清掉该城市的榜单缓存，让新城市重新拉取
+    if(rankCache[oldName+'|景点']) delete rankCache[oldName+'|景点'];
+    if(rankCache[oldName+'|餐饮']) delete rankCache[oldName+'|餐饮'];
+    if(rankCache[oldName+'|住宿']) delete rankCache[oldName+'|住宿'];
+    endEditIdx=-1;
+    renumberDays(); renderRoute(); renderTimeline();
+    if(window.__redrawMap) window.__redrawMap();
+    wpMask.style.display='none';
+    wpTitle.textContent='添加途经点'; document.getElementById('saveWp').textContent='添加';
+    wpName.value=''; wpLng.value=''; wpLat.value='';
+    note('已更新'+(isStart?'出发点':'返回点')+'：'+newName);
+    return;
+  }
+  // —— 普通添加途经点 ——
   if(cities.some(c=>c.name===name)){ note('该地点已在路线中'); return; }
   cities.splice(cities.length-1,0,{name, pos:[lng,lat], day:'', id:'wp'+Date.now()});
   renumberDays(); renderRoute(); renderTimeline();
