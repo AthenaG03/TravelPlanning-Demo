@@ -342,7 +342,8 @@
     const AMap = await AMapLoader.load({
       key: "6376906e6c474d29195e33493c947572",
       version: "2.0",
-      plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.Driving"]
+      plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.Driving", "AMap.Geocoder"],
+      securityJsCode: "7d883e4b4c8bbfca471eab928ec485a4" // 服务插件（Driving/Geocoder）鉴权必需
     });
 
     const map = new AMap.Map("amapContainer", {
